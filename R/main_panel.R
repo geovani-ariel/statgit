@@ -2440,10 +2440,15 @@ trackR_panel_css <- function() {
   /* Project Management Layout */
   .tr-project-layout {
     display: grid;
-    grid-template-columns: 1.1fr 1.3fr;
+    grid-template-columns: 1fr 1.2fr;
     gap: 32px;
     align-items: start;
     margin-top: 10px;
+    min-width: 0;
+  }
+  .tr-project-layout > * {
+    min-width: 0;
+    overflow-wrap: break-word;
   }
   @media (max-width: 650px) {
     .tr-project-layout {
@@ -2523,6 +2528,8 @@ trackR_panel_css <- function() {
     border-radius: 8px;
     overflow-y: auto;
     max-height: 500px;
+    min-height: 300px;
+    width: 100%;
   }
   .tr-tree-item {
     width: 100%;
