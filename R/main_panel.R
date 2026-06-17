@@ -2139,8 +2139,8 @@ trackR_panel_css <- function() {
     background: #262626;
   }
   .tr-pill.ok {
-    border-color: #9333EA;
-    background: rgba(147, 51, 234, 0.15);
+    border-color: #10B981;
+    background: rgba(16, 185, 129, 0.15);
   }
   .tr-pill.warn {
     border-color: #B45309;
@@ -2150,7 +2150,7 @@ trackR_panel_css <- function() {
     border-color: #991B1B;
     background: rgba(220, 38, 38, 0.15);
   }
-  .tr-pill.ok .tr-pill-value { color: #D8B4FE; }
+  .tr-pill.ok .tr-pill-value { color: #6EE7B7; }
   .tr-pill.warn .tr-pill-value { color: #FCD34D; }
   .tr-pill.error .tr-pill-value { color: #FCA5A5; }
   
