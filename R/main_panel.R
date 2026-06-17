@@ -181,9 +181,17 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
             shiny::div(
               class = "tr-summary-grid",
               lapply(stats, function(item) {
+                pill_class <- paste("tr-pill", item$class, if (isTRUE(item$interactive)) "interactive" else "")
+                onclick <- if (isTRUE(item$interactive)) {
+                  "Shiny.setInputValue('navigate_to_files', true, {priority: 'event'});"
+                } else {
+                  ""
+                }
+
                 shiny::div(
-                  class = paste("tr-pill", item$class),
+                  class = pill_class,
                   title = item$title,
+                  onclick = if (nzchar(onclick)) onclick else NULL,
                   if (nzchar(item$label)) shiny::span(class = "tr-pill-label", item$label),
                   shiny::span(class = "tr-pill-value", item$value)
                 )
@@ -297,6 +305,11 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
         sep = "\n"
       )
     })
+
+    shiny::observeEvent(input$navigate_to_files, {
+      shiny::updateRadioButtons(session, "module", selected = "files")
+      shiny::showNotification("Navegando para Arquivos e Código → Versionar", type = "message", duration = 2)
+    }, ignoreInit = TRUE)
 
     shiny::observeEvent(input$refresh_all, {
       diagnosis <- refresh_panel_state()
@@ -1541,7 +1554,8 @@ panel_summary_items <- function(diagnosis) {
       label = "",
       value = if (diagnosis$status_counts$total == 0) "Tudo salvo" else paste(diagnosis$status_counts$total, "Modificações"),
       class = if (diagnosis$status_counts$total == 0) "ok" else "warn",
-      title = if (diagnosis$status_counts$total == 0) "Projeto limpo, nada a salvar" else "Você tem arquivos modificados que ainda não foram salvos no Git"
+      title = if (diagnosis$status_counts$total == 0) "Projeto limpo, nada a salvar" else "Você tem arquivos modificados que ainda não foram salvos no Git",
+      interactive = diagnosis$status_counts$total > 0
     )
   )
 }
@@ -1685,26 +1699,43 @@ render_project_tree_html <- function(template, include_data) {
 }
 
 list_project_files_tree <- function(path) {
+  # Validate path
+  if (is.null(path) || !nzchar(path) || !fs::dir_exists(path)) {
+    return(character())
+  }
+
   # Recursively list all files and directories
-  all_paths <- tryCatch(fs::dir_ls(path, recurse = TRUE), error = function(e) character())
+  all_paths <- tryCatch(
+    fs::dir_ls(path, recurse = TRUE, all = FALSE),
+    error = function(e) {
+      warning("Erro ao listar arquivos do projeto: ", e$message, call. = FALSE)
+      character()
+    }
+  )
+
   if (length(all_paths) == 0) {
     return(character())
   }
-  
+
   # Make paths relative
   all_paths_rel <- as.character(fs::path_rel(all_paths, start = path))
-  
+
   # Filter out system/ignored paths
   ignore_patterns <- c("^\\.git", "^\\.Rproj\\.user", "^\\.Rhistory", "^\\.DS_Store", "\\.tar\\.gz$", "^\\.antigravity")
   for (pat in ignore_patterns) {
     all_paths_rel <- all_paths_rel[!grepl(pat, all_paths_rel)]
   }
-  
+
   # Sort alphabetically
   sort(all_paths_rel)
 }
 
 render_project_files_explorer_html <- function(path, diagnosis, selected = "") {
+  # Validate path
+  if (is.null(path) || !nzchar(path) || !fs::dir_exists(path)) {
+    return("<div style='color: #EF4444; font-style: italic;'>Caminho do projeto inválido ou não existe.</div>")
+  }
+
   files <- list_project_files_tree(path)
   if (length(files) == 0) {
     return("<div style='color: #71717A; font-style: italic;'>Projeto vazio ou sem arquivos.</div>")
@@ -2079,6 +2110,15 @@ trackR_panel_css <- function() {
     align-items: center;
     gap: 8px;
     box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .tr-pill.interactive {
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .tr-pill.interactive:hover {
+    transform: translateX(2px);
+    border-color: #555555;
+    background: #262626;
   }
   .tr-pill.ok {
     border-color: #059669;
