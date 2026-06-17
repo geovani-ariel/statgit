@@ -65,6 +65,25 @@ test_that("file_create cria arquivo com template customizavel", {
   expect_equal(readLines(created_path, warn = FALSE), "x <- 1")
 })
 
+test_that("file_create adiciona extensao quando nome nao informa", {
+  project <- withr::local_tempdir()
+
+  result <- file_create(
+    filename = "analise",
+    type = "qmd",
+    destination = "reports",
+    path = project,
+    content = "",
+    open_in_rstudio = FALSE
+  )
+
+  expect_true(result$ok)
+  expect_equal(result$relative_path, "reports/analise.qmd")
+  created_path <- file.path(project, "reports", "analise.qmd")
+  expect_true(file.exists(created_path))
+  expect_equal(unname(file.info(created_path)$size), 0)
+})
+
 test_that("file_create usa template padrao quando conteudo nao e informado", {
   project <- withr::local_tempdir()
 
@@ -127,5 +146,26 @@ test_that("file_delete identifica item rastreado no Git mesmo sem mudancas pende
     expect_true(result$ok)
     expect_true(result$was_tracked)
     expect_false(file.exists(target))
+  })
+})
+
+test_that("file_delete pode preparar remocao de arquivo rastreado no Git", {
+  with_isolated_git_identity({
+    project <- withr::local_tempdir()
+    git_init(project)
+    dir.create(file.path(project, "scripts"), recursive = TRUE)
+    target <- file.path(project, "scripts", "analise.R")
+    writeLines("x <- 1", target)
+    gert::git_add("scripts/analise.R", repo = project)
+    gert::git_commit("Adiciona arquivo", repo = project)
+
+    result <- file_delete("scripts/analise.R", path = project, remove_from_git = TRUE)
+    status <- repo_status_table(project)
+
+    expect_true(result$ok)
+    expect_true(result$was_tracked)
+    expect_true(result$git_removed)
+    expect_false(file.exists(target))
+    expect_true(any(status$file == "scripts/analise.R" & status$status == "deleted" & status$staged))
   })
 })

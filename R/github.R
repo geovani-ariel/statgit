@@ -216,3 +216,89 @@ git_push <- function(path = ".", remote = "origin", branch = NULL) {
     output = result$output
   ))
 }
+
+#' Sincroniza o historico local com o remote
+#'
+#' Executa `git pull --rebase` antes de enviar os commits locais com `git push`.
+#'
+#' @param path Caminho do projeto.
+#' @param remote Nome do remote.
+#' @param branch Branch a ser sincronizada. Se `NULL`, usa a branch atual.
+#'
+#' @return Uma lista com o resultado da operacao.
+#' @export
+git_sync <- function(path = ".", remote = "origin", branch = NULL) {
+  project_path <- normalize_project_path(path)
+  diagnosis <- build_git_diagnosis(project_path)
+
+  if (!diagnosis$git_installed) {
+    cli::cli_alert_danger("Git não foi encontrado. Instale o Git antes de continuar.")
+    return(invisible(list(ok = FALSE, reason = "git_missing", path = project_path)))
+  }
+
+  if (!diagnosis$has_repo) {
+    cli::cli_alert_danger("Esta pasta ainda não usa Git.")
+    return(invisible(list(ok = FALSE, reason = "repo_missing", path = project_path)))
+  }
+
+  if (!diagnosis$has_commits) {
+    cli::cli_alert_warning("Ainda não existe nenhum commit para sincronizar.")
+    return(invisible(list(ok = FALSE, reason = "no_commits", path = project_path)))
+  }
+
+  remote_info <- remote_by_name(project_path, remote = remote)
+  if (is.null(remote_info)) {
+    cli::cli_alert_warning(glue::glue("Nenhum remote chamado '{remote}' foi encontrado."))
+    return(invisible(list(ok = FALSE, reason = "remote_missing", remote = remote)))
+  }
+
+  branch <- branch %||% diagnosis$branch
+  if (is.null(branch) || !nzchar(branch)) {
+    cli::cli_alert_danger("Não foi possível descobrir a branch atual.")
+    return(invisible(list(ok = FALSE, reason = "branch_missing")))
+  }
+
+  remote_branch <- run_git(c("ls-remote", "--exit-code", "--heads", remote, branch), path = project_path)
+  pull_output <- character()
+
+  if (remote_branch$status == 0L) {
+    pull_result <- run_git(c("pull", "--rebase", remote, branch), path = project_path)
+    pull_output <- pull_result$output
+
+    if (pull_result$status != 0L) {
+      cli::cli_alert_danger("Não foi possível baixar e reaplicar mudanças do remote.")
+      cli::cli_inform(pull_result$output)
+      return(invisible(list(
+        ok = FALSE,
+        reason = "pull_failed",
+        remote = remote,
+        branch = branch,
+        output = pull_result$output
+      )))
+    }
+  } else {
+    cli::cli_inform(glue::glue("A branch {remote}/{branch} ainda não existe. Pulando pull antes do push."))
+  }
+
+  push_result <- git_push(path = project_path, remote = remote, branch = branch)
+  if (!isTRUE(push_result$ok)) {
+    return(invisible(list(
+      ok = FALSE,
+      reason = "push_failed_after_pull",
+      remote = remote,
+      branch = branch,
+      pull_output = pull_output,
+      push_result = push_result
+    )))
+  }
+
+  cli::cli_alert_success(glue::glue("Projeto sincronizado com {remote}/{branch}."))
+
+  invisible(list(
+    ok = TRUE,
+    remote = remote,
+    branch = branch,
+    pull_output = pull_output,
+    push_output = push_result$output
+  ))
+}

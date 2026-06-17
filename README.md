@@ -6,6 +6,14 @@ Assistente de Git para estudantes de Estatística que usam RStudio.
 
 Este pacote ajuda você a configurar Git em projetos RStudio, fazer o primeiro commit e entender o estado do seu projeto sem precisar começar pelo terminal.
 
+## Histórico de commits
+
+| Versão  | Commit      | Mensagem         |
+| ------- | ----------- | ---------------- |
+| 1.0.1   | `52f721b`   | Versão 1.0.1     |
+| 1.0.0   | `32ed5db`   | Versão 1.0.0     |
+| Initial | `d386859`   | Commit inicial   |
+
 ## Instalação
 
 Para instalar localmente a partir da pasta do pacote:

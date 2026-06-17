@@ -329,6 +329,14 @@ file_create <- function(filename, type = "R", destination = ".", path = ".", con
     return(invisible(list(ok = FALSE, reason = "empty_filename")))
   }
 
+  type <- trimws(type %||% "")
+  extensions <- c(R = "R", Rmd = "Rmd", qmd = "qmd", md = "md", txt = "txt", csv = "csv")
+  expected_extension <- extensions[[type]] %||% type
+  if (nzchar(expected_extension) && !nzchar(fs::path_ext(filename))) {
+    filename <- paste0(filename, ".", expected_extension)
+    file_path <- fs::path(full_dir, filename)
+  }
+
   if (!is_within_project(file_path, project_path)) {
     cli::cli_alert_danger("O arquivo precisa ficar dentro do projeto.")
     return(invisible(list(ok = FALSE, reason = "outside_project")))
@@ -351,7 +359,11 @@ file_create <- function(filename, type = "R", destination = ".", path = ".", con
 
   # Escrever arquivo
   tryCatch({
-    writeLines(file_content, file_path, useBytes = TRUE)
+    if (identical(file_content, "")) {
+      file.create(file_path)
+    } else {
+      writeLines(file_content, file_path, useBytes = TRUE)
+    }
 
     cli::cli_alert_success(glue::glue("Arquivo '{filename}' criado com sucesso."))
 
@@ -381,27 +393,43 @@ file_create <- function(filename, type = "R", destination = ".", path = ".", con
 #'
 #' @param path_to_delete Caminho relativo do arquivo/pasta a deletar (ex: "scripts/old_analysis.R")
 #' @param path Caminho do projeto
+#' @param remove_from_git Se `TRUE`, prepara a remocao no Git quando o item era rastreado.
 #'
 #' @return Lista com resultado da deleção
 #' @export
-file_delete <- function(path_to_delete, path = ".") {
+file_delete <- function(path_to_delete, path = ".", remove_from_git = FALSE) {
   info <- file_delete_info(path_to_delete, path = path)
   if (!isTRUE(info$ok)) {
     cli::cli_alert_danger(info$message)
     return(invisible(info))
   }
 
-  # Deletar
   tryCatch({
-    if (identical(info$item_kind, "directory")) {
-      fs::dir_delete(info$full_path)
+    git_removed <- FALSE
+    if (isTRUE(remove_from_git) && isTRUE(info$was_tracked)) {
+      repo <- git_repo_root(normalize_project_path(path))
+      if (!is.null(repo)) {
+        relative_to_repo <- relative_project_path(info$full_path, repo)
+        git_rm_args <- c("rm", if (identical(info$item_kind, "directory")) "-r", "--", relative_to_repo)
+        git_rm_result <- run_git(git_rm_args, path = repo)
+        if (git_rm_result$status != 0L) {
+          stop(paste(git_rm_result$output, collapse = "\n"), call. = FALSE)
+        }
+        git_removed <- TRUE
+      }
     } else {
-      fs::file_delete(info$full_path)
+      if (identical(info$item_kind, "directory")) {
+        fs::dir_delete(info$full_path)
+      } else {
+        fs::file_delete(info$full_path)
+      }
     }
 
     cli::cli_alert_success(glue::glue("{info$item_type_label} '{info$relative_path}' deletado."))
 
-    if (isTRUE(info$was_tracked)) {
+    if (isTRUE(git_removed)) {
+      cli::cli_inform("A remoção também foi preparada no Git.")
+    } else if (isTRUE(info$was_tracked)) {
       cli::cli_inform("⚠️  Este item estava rastreado no Git. Você pode recuperá-lo do histórico se necessário.")
     }
 
@@ -409,7 +437,8 @@ file_delete <- function(path_to_delete, path = ".") {
       ok = TRUE,
       path = info$relative_path,
       item_type = info$item_kind,
-      was_tracked = info$was_tracked
+      was_tracked = info$was_tracked,
+      git_removed = git_removed
     ))
   }, error = function(e) {
     cli::cli_alert_danger("Erro ao deletar item.")

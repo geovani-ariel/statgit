@@ -33,7 +33,7 @@ test_that("painel aciona criacao de arquivo com os dados da UI", {
     expect_equal(calls$create$type, "qmd")
     expect_equal(calls$create$destination, "reports")
     expect_equal(calls$create$content, "---\ntitle: \"Teste\"\n---\n")
-    expect_false(calls$create$open_in_rstudio)
+    expect_true(calls$create$open_in_rstudio)
     expect_equal(
       as.character(normalize_project_path(calls$create$path)),
       as.character(normalize_project_path(project))
@@ -59,8 +59,12 @@ test_that("painel confirma exclusao antes de deletar", {
         was_tracked = TRUE
       )
     },
-    file_delete = function(path_to_delete, path = ".") {
-      calls$delete <<- list(path_to_delete = path_to_delete, path = path)
+    file_delete = function(path_to_delete, path = ".", remove_from_git = FALSE) {
+      calls$delete <<- list(
+        path_to_delete = path_to_delete,
+        path = path,
+        remove_from_git = remove_from_git
+      )
       invisible(list(ok = TRUE))
     }
   )
@@ -72,9 +76,11 @@ test_that("painel confirma exclusao antes de deletar", {
     expect_equal(values$pending_delete, "scripts/velho.R")
     expect_null(calls$delete)
 
+    session$setInputs(file_delete_remove_from_git = TRUE)
     session$setInputs(confirm_file_delete = 1)
 
     expect_equal(calls$delete$path_to_delete, "scripts/velho.R")
+    expect_true(calls$delete$remove_from_git)
     expect_equal(
       as.character(normalize_project_path(calls$delete$path)),
       as.character(normalize_project_path(project))
@@ -97,4 +103,146 @@ test_that("abas criar e deletar exibem a estrutura atual do projeto", {
   expect_match(excluir_html, "Estrutura atual do projeto", fixed = TRUE)
   expect_match(criar_html, "recent_files_explorer", fixed = TRUE)
   expect_match(excluir_html, "recent_files_explorer", fixed = TRUE)
+})
+
+test_that("arvore de arquivos renderiza itens clicaveis", {
+  skip_if_not_installed("shiny")
+
+  project <- withr::local_tempdir()
+  dir.create(file.path(project, "scripts"), recursive = TRUE)
+  writeLines("x <- 1", file.path(project, "scripts", "analise.R"))
+  diagnosis <- build_git_diagnosis(project)
+  diagnosis$current_path <- normalize_project_path(project)
+
+  html <- render_project_files_explorer_html(project, diagnosis)
+
+  expect_match(html, "tr-tree-item", fixed = TRUE)
+  expect_match(html, "Shiny.setInputValue('selected_project_item'", fixed = TRUE)
+  expect_match(html, "scripts/analise.R", fixed = TRUE)
+})
+
+test_that("rename_module_ui preenche novo nome com origem inicial", {
+  skip_if_not_installed("shiny")
+
+  project <- withr::local_tempdir()
+  dir.create(file.path(project, "scripts"), recursive = TRUE)
+  writeLines("x <- 1", file.path(project, "scripts", "analise.R"))
+  diagnosis <- build_git_diagnosis(project)
+  diagnosis$current_path <- normalize_project_path(project)
+
+  html <- htmltools::renderTags(rename_module_ui(diagnosis))$html
+
+  expect_match(html, "Origem", fixed = TRUE)
+  expect_match(html, "scripts/analise.R", fixed = TRUE)
+})
+
+test_that("git_module_ui mostra estado atual e motivos de bloqueio", {
+  skip_if_not_installed("shiny")
+
+  diagnosis <- list(
+    current_path = normalize_project_path(withr::local_tempdir()),
+    has_repo = TRUE,
+    git_installed = TRUE,
+    identity = list(name = "Ada", email = "ada@example.com", complete = TRUE),
+    has_commits = FALSE,
+    has_remote = FALSE,
+    branch = "main",
+    status_counts = list(total = 0L)
+  )
+
+  testthat::local_mocked_bindings(
+    remote_by_name = function(path = ".", remote = "origin") NULL
+  )
+
+  html <- htmltools::renderTags(git_module_ui(diagnosis))$html
+
+  expect_match(html, "Git e GitHub", fixed = TRUE)
+  expect_false(grepl("Diagnóstico", html, fixed = TRUE))
+  expect_match(html, "Identidade", fixed = TRUE)
+  expect_match(html, "Identidade atual", fixed = TRUE)
+  expect_match(html, "Ada &lt;ada@example.com&gt;", fixed = TRUE)
+  expect_match(html, "Salvar ou editar identidade", fixed = TRUE)
+  expect_match(html, "Git local", fixed = TRUE)
+  expect_match(html, "Branch ativa", fixed = TRUE)
+  expect_match(html, "main", fixed = TRUE)
+  expect_false(grepl("Inicializar Git", html, fixed = TRUE))
+  expect_false(grepl("Criar ou atualizar .gitignore", html, fixed = TRUE))
+  expect_match(html, "Salvar versão local", fixed = TRUE)
+  expect_match(html, "Conectar GitHub", fixed = TRUE)
+  expect_match(html, "Enviar", fixed = TRUE)
+  expect_match(html, "tr-git-step-title complete", fixed = TRUE)
+  expect_match(html, "Não há mudanças pendentes para commitar.", fixed = TRUE)
+  expect_match(html, "Conecte um remote antes de enviar commits.", fixed = TRUE)
+  expect_false(grepl("Trocar URL conectada", html, fixed = TRUE))
+  expect_false(grepl("Testar acesso", html, fixed = TRUE))
+  expect_match(html, "disabled=\"disabled\"", fixed = TRUE)
+})
+
+test_that("badges superiores da aba git nao incluem identidade", {
+  diagnosis <- list(
+    current_path = normalize_project_path(withr::local_tempdir()),
+    has_repo = TRUE,
+    git_installed = TRUE,
+    identity = list(name = "Ada", email = "ada@example.com", complete = TRUE),
+    has_commits = TRUE,
+    has_remote = TRUE,
+    remote_name = "origin",
+    branch = "main",
+    status_counts = list(total = 2L)
+  )
+
+  labels <- vapply(git_status_badge_items(diagnosis), `[[`, character(1), "label")
+
+  expect_equal(labels, c("Git", "Commits", "Remote", "Branch", "Pendências"))
+})
+
+test_that("git_module_ui preenche remote atual quando existir", {
+  skip_if_not_installed("shiny")
+
+  diagnosis <- list(
+    current_path = normalize_project_path(withr::local_tempdir()),
+    has_repo = TRUE,
+    git_installed = TRUE,
+    identity = list(name = "Ada", email = "ada@example.com", complete = TRUE),
+    has_commits = TRUE,
+    has_remote = TRUE,
+    branch = "main",
+    status_counts = list(total = 2L)
+  )
+
+  testthat::local_mocked_bindings(
+    remote_by_name = function(path = ".", remote = "origin") {
+      list(name = "origin", url = "https://github.com/user/repo.git", is_github = TRUE)
+    }
+  )
+
+  html <- htmltools::renderTags(git_module_ui(diagnosis))$html
+
+  expect_match(html, "Remote atual", fixed = TRUE)
+  expect_match(html, "https://github.com/user/repo.git", fixed = TRUE)
+  expect_match(html, "Salvar remote", fixed = TRUE)
+  expect_match(html, "Trocar URL conectada", fixed = TRUE)
+  expect_match(html, "Pull + Push", fixed = TRUE)
+})
+
+test_that("git_module_ui mostra bloqueios com explicacao", {
+  skip_if_not_installed("shiny")
+
+  diagnosis <- list(
+    current_path = normalize_project_path(withr::local_tempdir()),
+    has_repo = FALSE,
+    git_installed = TRUE,
+    identity = list(name = "", email = "", complete = FALSE),
+    has_commits = FALSE,
+    has_remote = FALSE,
+    branch = NULL,
+    status_counts = list(total = 0L)
+  )
+
+  html <- htmltools::renderTags(git_module_ui(diagnosis))$html
+
+  expect_match(html, "tr-git-step-title blocked", fixed = TRUE)
+  expect_match(html, "fa-lock", fixed = TRUE)
+  expect_match(html, "Inicialize o Git antes de criar commits.", fixed = TRUE)
+  expect_match(html, "Inicialize o Git antes de conectar o GitHub.", fixed = TRUE)
 })
