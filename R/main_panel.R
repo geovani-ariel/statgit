@@ -160,12 +160,16 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
 
     output$project_summary <- shiny::renderUI({
       diagnosis <- d()
-      stats <- if (identical(input$module %||% "overview", "git")) {
+      # Force reactivity on both diagnosis and module
+      shiny::req(diagnosis)
+      current_module <- input$module %||% "overview"
+
+      stats <- if (identical(current_module, "git")) {
         git_status_badge_items(diagnosis)
       } else {
         panel_summary_items(diagnosis)
       }
-      
+
       project_name <- if (diagnosis$is_rstudio_project) basename(diagnosis$rproj_path) else basename(diagnosis$current_path)
 
       shiny::div(
@@ -310,6 +314,12 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
       shiny::updateRadioButtons(session, "module", selected = "files")
       shiny::showNotification("Navegando para Arquivos e Código → Versionar", type = "message", duration = 2)
     }, ignoreInit = TRUE)
+
+    # Auto-refresh diagnosis every 2 seconds for dynamic badges
+    shiny::observe({
+      shiny::invalidateLater(2000)
+      refresh_diagnosis()
+    })
 
     shiny::observeEvent(input$refresh_all, {
       diagnosis <- refresh_panel_state()
