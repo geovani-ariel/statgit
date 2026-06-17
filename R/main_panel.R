@@ -115,6 +115,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
     values <- shiny::reactiveValues(
       log = paste(diagnosis_lines(initial_diagnosis), collapse = "\n"),
       diff_html = format_diff_for_panel_html(character()),
+      inline_diff_html = "",
       pending_delete = NULL
     )
 
@@ -300,6 +301,23 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
       shiny::HTML(render_project_files_explorer_html(project_path, d(), input$selected_project_item %||% ""))
     })
 
+    output$file_content_preview <- shiny::renderUI({
+      shiny::req(project_path, nzchar(project_path))
+      shiny::HTML(render_file_content_preview_html(project_path, input$selected_project_item %||% ""))
+    })
+
+    output$file_actions_panel <- shiny::renderUI({
+      shiny::req(project_path, nzchar(project_path))
+      file_actions_panel_ui(project_path, d(), input$selected_project_item %||% "")
+    })
+
+    output$file_diff_inline <- shiny::renderUI({
+      if (is.null(values$inline_diff_html) || !nzchar(values$inline_diff_html)) {
+        return(NULL)
+      }
+      shiny::div(class = "tr-inline-diff", shiny::HTML(values$inline_diff_html))
+    })
+
     output$changes_summary <- shiny::renderText({
       diagnosis <- d()
       counts <- diagnosis$status_counts
@@ -415,6 +433,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
     }, ignoreInit = TRUE)
 
     shiny::observeEvent(input$file_import, {
+      shiny::removeModal()
       run_panel_action(
         file_import(
           source = input$file_source,
@@ -436,6 +455,9 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
     }, ignoreInit = TRUE)
 
     shiny::observeEvent(input$selected_project_item, {
+      # Ao trocar de arquivo, esconde o diff inline do arquivo anterior.
+      values$inline_diff_html <- ""
+
       selected <- trimws(input$selected_project_item %||% "")
       if (!nzchar(selected)) {
         return()
@@ -473,7 +495,106 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
       }
     }, ignoreInit = TRUE)
 
+    # --- Explorador unificado: modais e acoes contextuais ---
+    shiny::observeEvent(input$open_create_modal, {
+      shiny::showModal(create_modal_ui())
+    }, ignoreInit = TRUE)
+
+    shiny::observeEvent(input$open_import_modal, {
+      shiny::showModal(import_modal_ui())
+    }, ignoreInit = TRUE)
+
+    shiny::observeEvent(input$open_organize_modal, {
+      shiny::showModal(organize_modal_ui())
+    }, ignoreInit = TRUE)
+
+    shiny::observeEvent(input$act_format, {
+      selected <- trimws(input$selected_project_item %||% "")
+      if (!nzchar(selected)) return()
+      run_panel_action(code_format(fs::path(project_path, selected)), refresh = FALSE)
+      shiny::showNotification("Arquivo formatado.", type = "message", duration = 2)
+    }, ignoreInit = TRUE)
+
+    shiny::observeEvent(input$act_rename, {
+      selected <- trimws(input$selected_project_item %||% "")
+      target <- trimws(input$act_rename_target %||% "")
+      if (!nzchar(selected) || !nzchar(target)) {
+        shiny::showNotification("Selecione um arquivo e informe o novo nome.", type = "error")
+        return()
+      }
+      if (identical(selected, target)) {
+        shiny::showNotification("O novo nome é igual ao atual.", type = "warning")
+        return()
+      }
+      run_panel_action(file_rename(selected, target, path = project_path))
+      shiny::showNotification("Arquivo renomeado.", type = "message", duration = 2)
+    }, ignoreInit = TRUE)
+
+    shiny::observeEvent(input$act_diff, {
+      selected <- trimws(input$selected_project_item %||% "")
+      if (!nzchar(selected)) return()
+      result <- git_diff(file = selected, path = project_path, staged = FALSE, context = "changes")
+      diff_lines <- result$diff %||% character()
+      values$inline_diff_html <- format_diff_for_panel_html(diff_lines)
+    }, ignoreInit = TRUE)
+
+    shiny::observeEvent(input$act_commit, {
+      selected <- trimws(input$selected_project_item %||% "")
+      if (!nzchar(selected)) return()
+      message <- trimws(input$act_commit_message %||% "")
+      if (!nzchar(message)) {
+        shiny::showNotification("Escreva uma mensagem para o commit.", type = "error")
+        return()
+      }
+      stage_output <- capture_lines(git_stage(selected, path = project_path))
+      commit_output <- capture_lines(git_commit(message, path = project_path))
+      set_log(paste(c(stage_output, commit_output), collapse = "\n"))
+      refresh_panel_state()
+      values$inline_diff_html <- ""
+      shiny::showNotification("Versão salva (commit).", type = "message", duration = 2)
+    }, ignoreInit = TRUE)
+
+    shiny::observeEvent(input$act_delete, {
+      selected <- trimws(input$selected_project_item %||% "")
+      if (!nzchar(selected)) return()
+      info <- file_delete_info(selected, path = project_path)
+      if (!isTRUE(info$ok)) {
+        set_log(info$message)
+        shiny::showNotification(info$message, type = "error")
+        return()
+      }
+
+      values$pending_delete <- info$relative_path
+
+      tracked_warning <- if (isTRUE(info$was_tracked)) {
+        shiny::div(
+          style = "margin-top: 12px; padding: 12px; border-radius: 8px; background: #3B1D1F; color: #FECACA; border: 1px solid #7F1D1D;",
+          "Este item está rastreado no Git. A exclusão vai aparecer como remoção nas mudanças do projeto."
+        )
+      } else {
+        NULL
+      }
+
+      shiny::showModal(
+        shiny::modalDialog(
+          title = "Confirmar exclusão",
+          shiny::p(sprintf("Você quer deletar %s?", info$label)),
+          shiny::p("Esta ação remove o item do disco local."),
+          tracked_warning,
+          if (isTRUE(info$was_tracked)) {
+            shiny::checkboxInput("file_delete_remove_from_git", "Preparar a remoção no Git também", value = TRUE)
+          },
+          easyClose = TRUE,
+          footer = shiny::tagList(
+            shiny::modalButton("Cancelar"),
+            shiny::actionButton("confirm_file_delete", "Confirmar exclusão", class = "btn-danger")
+          )
+        )
+      )
+    }, ignoreInit = TRUE)
+
     shiny::observeEvent(input$file_create, {
+      shiny::removeModal()
       run_panel_action(
         file_create(
           filename = input$file_create_name,
@@ -864,115 +985,117 @@ project_module_ui <- function() {
 files_module_ui <- function(diagnosis) {
   panel_section(
     "Arquivos e Código",
-    shiny::tabsetPanel(
-      type = "pills",
-      shiny::tabPanel(
-        "Importar",
-        shiny::br(),
+    shiny::div(
+      class = "tr-explorer",
+
+      # Coluna 1: arvore de arquivos + acoes de criar/importar/organizar
+      shiny::div(
+        class = "tr-explorer-tree",
         shiny::div(
-          class = "tr-project-layout",
-          shiny::div(
-            style = "display: flex; flex-direction: column; gap: 15px;",
-            shiny::div(
-              shiny::tags$label("Arquivo de origem", style = "font-weight: 600; font-size: 14px; margin-bottom: 6px; display: block; color: #EDEDED;"),
-              shiny::div(
-                style = "display: flex; gap: 10px; align-items: stretch;",
-                shiny::div(
-                  style = "flex-grow: 1;",
-                  shiny::textInput("file_source", label = NULL, value = "", width = "100%")
-                ),
-                shiny::actionButton("file_choose_source", "Escolher...")
-              )
-            ),
-            shiny::selectInput(
-              "file_destination",
-              "Pasta de destino no projeto",
-              choices = c(
-                "Dados originais (data/raw)" = "data/raw",
-                "Dados tratados (data/processed)" = "data/processed",
-                "Relatórios Quarto (reports)" = "reports",
-                "Scripts R (scripts)" = "scripts",
-                "Figuras/Gráficos (figs)" = "figs"
-              ),
-              selected = "data/raw"
-            ),
-            shiny::div(
-              class = "tr-checkbox-group",
-              shiny::checkboxInput("file_move", "Mover em vez de copiar arquivo", value = FALSE),
-              shiny::checkboxInput("file_overwrite", "Substituir arquivo existente", value = FALSE),
-              shiny::checkboxInput("file_add_to_git", "Adicionar ao controle de versão (Git)", value = TRUE)
-            ),
-            shiny::div(
-              style = "margin-top: 20px;",
-              shiny::actionButton("file_import", "Importar arquivo", class = "btn-primary", style = "width: 100%; font-weight: 600; font-size: 15px; height: 42px !important;")
-            )
-          ),
-          shiny::div(
-            shiny::div(
-              class = "tr-tree-card",
-              shiny::h5("Arquivos Atuais do Projeto:", style = "margin-top: 0; margin-bottom: 12px; font-weight: 600; color: #EDEDED;"),
-              shiny::uiOutput("recent_files_explorer")
-            )
-          )
-        )
-      ),
-      shiny::tabPanel(
-        "Criar",
-        shiny::br(),
-        criar_module_ui(diagnosis)
-      ),
-      shiny::tabPanel(
-        "Gerenciar",
-        shiny::br(),
-        shiny::tabsetPanel(
-          type = "pills",
-          shiny::tabPanel(
-            "Formatar",
-            shiny::br(),
-            panel_section(
-              "Formatar Código",
-              shiny::p("Organiza a indentação e espaçamentos automaticamente.", style = "font-size: 13px; color: #A1A1AA; margin-bottom: 15px; line-height: 1.4;"),
-              format_module_ui(diagnosis)
-            )
-          ),
-          shiny::tabPanel(
-            "Renomear",
-            shiny::br(),
-            panel_section(
-              "Renomear Arquivos/Pastas",
-              shiny::p("Mude o nome ou o local de pastas e arquivos.", style = "font-size: 13px; color: #A1A1AA; margin-bottom: 15px; line-height: 1.4;"),
-              rename_module_ui(diagnosis)
-            )
-          ),
-          shiny::tabPanel(
-            "Organizar",
-            shiny::br(),
-            panel_section(
-              "Organizar Estrutura",
-              shiny::p("Cria ou completa a estrutura padrão de pastas e arquivos do projeto.", style = "font-size: 13px; color: #A1A1AA; margin-bottom: 15px; line-height: 1.4;"),
-              organize_module_ui()
-            )
-          ),
-          shiny::tabPanel(
-            "Excluir",
-            shiny::br(),
-            panel_section(
-              "Deletar Arquivos/Pastas",
-              shiny::p("Remove um arquivo ou pasta do projeto.", style = "font-size: 13px; color: #A1A1AA; margin-bottom: 15px; line-height: 1.4;"),
-              excluir_module_ui(diagnosis)
-            )
-          )
-        )
-      ),
-      shiny::tabPanel(
-        "Versionar",
-        shiny::br(),
+          class = "tr-explorer-toolbar",
+          shiny::actionButton("open_create_modal", shiny::tagList(shiny::icon("plus"), " Criar"), class = "btn-primary btn-sm"),
+          shiny::actionButton("open_import_modal", shiny::tagList(shiny::icon("file-import"), " Importar"), class = "btn-default btn-sm"),
+          shiny::actionButton("open_organize_modal", shiny::icon("folder-tree"), class = "btn-default btn-sm", title = "Organizar estrutura de pastas")
+        ),
         shiny::div(
-          style = "max-width: 800px;",
-          changes_module_ui(diagnosis)
+          class = "tr-explorer-tree-body",
+          shiny::uiOutput("recent_files_explorer")
         )
+      ),
+
+      # Coluna 2: conteudo do arquivo selecionado
+      shiny::div(
+        class = "tr-explorer-content",
+        shiny::uiOutput("file_content_preview"),
+        shiny::uiOutput("file_diff_inline")
+      ),
+
+      # Coluna 3: acoes contextuais + status Git do arquivo
+      shiny::div(
+        class = "tr-explorer-actions",
+        shiny::uiOutput("file_actions_panel")
       )
     )
+  )
+}
+
+import_modal_ui <- function() {
+  shiny::modalDialog(
+    title = "Importar arquivo para o projeto",
+    easyClose = TRUE,
+    shiny::div(
+      style = "display: flex; flex-direction: column; gap: 15px;",
+      shiny::div(
+        shiny::tags$label("Arquivo de origem", style = "font-weight: 600; font-size: 14px; margin-bottom: 6px; display: block; color: #EDEDED;"),
+        shiny::div(
+          style = "display: flex; gap: 10px; align-items: stretch;",
+          shiny::div(style = "flex-grow: 1;", shiny::textInput("file_source", label = NULL, value = "", width = "100%")),
+          shiny::actionButton("file_choose_source", "Escolher...")
+        )
+      ),
+      shiny::selectInput(
+        "file_destination",
+        "Pasta de destino no projeto",
+        choices = c(
+          "Dados originais (data/raw)" = "data/raw",
+          "Dados tratados (data/processed)" = "data/processed",
+          "Relatórios Quarto (reports)" = "reports",
+          "Scripts R (scripts)" = "scripts",
+          "Figuras/Gráficos (figs)" = "figs"
+        ),
+        selected = "data/raw"
+      ),
+      shiny::div(
+        class = "tr-checkbox-group",
+        shiny::checkboxInput("file_move", "Mover em vez de copiar arquivo", value = FALSE),
+        shiny::checkboxInput("file_overwrite", "Substituir arquivo existente", value = FALSE),
+        shiny::checkboxInput("file_add_to_git", "Adicionar ao controle de versão (Git)", value = TRUE)
+      )
+    ),
+    footer = shiny::tagList(
+      shiny::modalButton("Cancelar"),
+      shiny::actionButton("file_import", "Importar arquivo", class = "btn-primary")
+    )
+  )
+}
+
+create_modal_ui <- function() {
+  shiny::modalDialog(
+    title = "Criar novo arquivo",
+    easyClose = TRUE,
+    shiny::div(
+      style = "display: flex; flex-direction: column; gap: 15px;",
+      shiny::div(
+        shiny::tags$label("Nome do arquivo", style = "font-weight: 600; font-size: 14px; margin-bottom: 6px; display: block; color: #EDEDED;"),
+        shiny::textInput("file_create_name", label = NULL, placeholder = "ex: script.R, relatorio.qmd", value = "")
+      ),
+      shiny::selectInput(
+        "file_create_type",
+        "Tipo de arquivo",
+        choices = c("Script R" = "R", "RMarkdown" = "Rmd", "Quarto" = "qmd", "Markdown" = "md", "CSV" = "csv"),
+        selected = "R"
+      ),
+      shiny::selectInput(
+        "file_create_destination",
+        "Pasta de destino no projeto",
+        choices = c("Scripts R" = "scripts", "Relatórios" = "reports", "Dados" = "data/raw", "Figuras" = "figs", "Raiz do projeto" = "."),
+        selected = "scripts"
+      ),
+      shiny::textAreaInput("file_create_content", "Conteúdo inicial (opcional)", value = "", rows = 8, width = "100%")
+    ),
+    footer = shiny::tagList(
+      shiny::modalButton("Cancelar"),
+      shiny::actionButton("file_create", "Criar arquivo", class = "btn-primary")
+    )
+  )
+}
+
+organize_modal_ui <- function() {
+  shiny::modalDialog(
+    title = "Organizar estrutura do projeto",
+    easyClose = TRUE,
+    organize_module_ui(),
+    footer = shiny::modalButton("Fechar")
   )
 }
 
@@ -1828,8 +1951,218 @@ render_project_files_explorer_html <- function(path, diagnosis, selected = "") {
       status_indicator
     )
   }, character(1))
-  
+
   paste(lines, collapse = "")
+}
+
+# Extensoes tratadas como binarias / dados, sem preview textual.
+file_preview_binary_exts <- function() {
+  c(
+    "rds", "rda", "rdata", "xlsx", "xls", "feather", "parquet", "sav", "dta",
+    "png", "jpg", "jpeg", "gif", "bmp", "ico", "svg", "pdf", "tiff",
+    "zip", "tar", "gz", "7z", "rar", "woff", "woff2", "ttf", "otf", "eot",
+    "doc", "docx", "ppt", "pptx", "bin", "o", "so", "dll", "exe"
+  )
+}
+
+file_preview_lang_label <- function(ext) {
+  switch(
+    tolower(ext),
+    r = "R", rmd = "R Markdown", qmd = "Quarto", md = "Markdown",
+    csv = "CSV", txt = "Texto", json = "JSON", yml = "YAML", yaml = "YAML",
+    py = "Python", sql = "SQL", html = "HTML", css = "CSS", js = "JavaScript",
+    "Arquivo de texto"
+  )
+}
+
+# Renderiza o conteudo do arquivo selecionado com numeracao de linhas.
+render_file_content_preview_html <- function(path, selected = "") {
+  selected <- trimws(selected %||% "")
+
+  if (!nzchar(selected)) {
+    return(paste0(
+      "<div class='tr-preview-empty'>",
+      "<div class='tr-preview-empty-icon'>\U0001F4C4</div>",
+      "<div class='tr-preview-empty-title'>Nenhum arquivo selecionado</div>",
+      "<div class='tr-preview-empty-hint'>Clique em um arquivo na árvore à esquerda para ver o conteúdo e as ações disponíveis.</div>",
+      "</div>"
+    ))
+  }
+
+  full_path <- fs::path(path, selected)
+
+  if (!fs::file_exists(full_path) && !fs::dir_exists(full_path)) {
+    return("<div class='tr-preview-empty'><div class='tr-preview-empty-title'>Item não encontrado</div></div>")
+  }
+
+  if (fs::is_dir(full_path)) {
+    n_items <- tryCatch(length(fs::dir_ls(full_path)), error = function(e) 0L)
+    return(paste0(
+      "<div class='tr-preview-empty'>",
+      "<div class='tr-preview-empty-icon'>\U0001F4C1</div>",
+      "<div class='tr-preview-empty-title'>", htmltools::htmlEscape(basename(selected)), "/</div>",
+      "<div class='tr-preview-empty-hint'>Pasta com ", n_items, " item(ns). Selecione um arquivo para visualizar o conteúdo.</div>",
+      "</div>"
+    ))
+  }
+
+  ext <- tolower(fs::path_ext(selected))
+  size <- tryCatch(as.numeric(fs::file_size(full_path)), error = function(e) NA_real_)
+
+  if (ext %in% file_preview_binary_exts()) {
+    return(paste0(
+      "<div class='tr-preview-empty'>",
+      "<div class='tr-preview-empty-icon'>\U0001F4CA</div>",
+      "<div class='tr-preview-empty-title'>", htmltools::htmlEscape(basename(selected)), "</div>",
+      "<div class='tr-preview-empty-hint'>Arquivo de dados/binário (", toupper(ext), "). Sem pré-visualização de texto.</div>",
+      "</div>"
+    ))
+  }
+
+  if (!is.na(size) && size > 200000) {
+    return(paste0(
+      "<div class='tr-preview-empty'>",
+      "<div class='tr-preview-empty-icon'>\U0001F4C4</div>",
+      "<div class='tr-preview-empty-title'>", htmltools::htmlEscape(basename(selected)), "</div>",
+      "<div class='tr-preview-empty-hint'>Arquivo muito grande (", round(size / 1024), " KB) para pré-visualizar aqui.</div>",
+      "</div>"
+    ))
+  }
+
+  lines <- tryCatch(
+    readLines(full_path, warn = FALSE, encoding = "UTF-8"),
+    error = function(e) NULL
+  )
+
+  if (is.null(lines)) {
+    return("<div class='tr-preview-empty'><div class='tr-preview-empty-title'>Não foi possível ler este arquivo.</div></div>")
+  }
+
+  max_lines <- 600L
+  truncated <- length(lines) > max_lines
+  if (truncated) {
+    lines <- lines[seq_len(max_lines)]
+  }
+
+  if (length(lines) == 0) {
+    body_rows <- "<div class='tr-code-row'><span class='tr-code-gutter'>1</span><span class='tr-code-line'></span></div>"
+  } else {
+    body_rows <- paste(
+      vapply(seq_along(lines), function(i) {
+        sprintf(
+          "<div class='tr-code-row'><span class='tr-code-gutter'>%d</span><span class='tr-code-line'>%s</span></div>",
+          i,
+          htmltools::htmlEscape(lines[[i]])
+        )
+      }, character(1)),
+      collapse = ""
+    )
+  }
+
+  trunc_note <- if (truncated) {
+    paste0("<div class='tr-code-truncated'>Mostrando as primeiras ", max_lines, " linhas de ", length(lines), "+ — abra no RStudio para ver tudo.</div>")
+  } else {
+    ""
+  }
+
+  size_label <- if (!is.na(size)) paste0(round(size / 1024, 1), " KB") else ""
+
+  paste0(
+    "<div class='tr-code-preview'>",
+    "<div class='tr-code-header'>",
+    "<span class='tr-code-filename'>", htmltools::htmlEscape(basename(selected)), "</span>",
+    "<span class='tr-code-meta'>", file_preview_lang_label(ext), if (nzchar(size_label)) paste0(" · ", size_label) else "", "</span>",
+    "</div>",
+    "<div class='tr-code-body'>", body_rows, "</div>",
+    trunc_note,
+    "</div>"
+  )
+}
+
+# Painel contextual de acoes para o arquivo selecionado (Shiny tags reais).
+file_actions_panel_ui <- function(path, diagnosis, selected = "") {
+  selected <- trimws(selected %||% "")
+
+  if (!nzchar(selected)) {
+    return(
+      shiny::div(
+        class = "tr-actions-empty",
+        shiny::div(class = "tr-actions-empty-icon", shiny::icon("hand-pointer")),
+        shiny::div(class = "tr-actions-empty-text", "Selecione um arquivo na árvore para ver as ações disponíveis.")
+      )
+    )
+  }
+
+  full_path <- fs::path(path, selected)
+  is_dir_val <- fs::dir_exists(full_path) && !fs::file_exists(full_path)
+  ext <- tolower(fs::path_ext(selected))
+  is_formattable <- !is_dir_val && ext %in% c("r", "rmd", "qmd")
+
+  # Status Git do arquivo
+  status_tbl <- diagnosis$status
+  status_label <- "Sem mudanças"
+  status_class <- "ok"
+  has_changes <- FALSE
+  if (!is.null(status_tbl) && nrow(status_tbl) > 0) {
+    row <- status_tbl[status_tbl$file == selected, , drop = FALSE]
+    if (nrow(row) > 0) {
+      has_changes <- TRUE
+      st <- row$status[[1]]
+      staged <- isTRUE(row$staged[[1]])
+      if (staged) {
+        status_label <- "Preparado para commit"; status_class <- "ok"
+      } else if (identical(st, "modified")) {
+        status_label <- "Modificado"; status_class <- "warn"
+      } else if (identical(st, "new")) {
+        status_label <- "Não rastreado"; status_class <- "error"
+      } else if (identical(st, "deleted")) {
+        status_label <- "Removido"; status_class <- "error"
+      }
+    }
+  }
+
+  shiny::div(
+    class = "tr-actions-panel",
+    shiny::div(
+      class = "tr-actions-head",
+      shiny::div(class = "tr-actions-filename", basename(selected)),
+      shiny::div(class = "tr-actions-path", selected),
+      if (diagnosis$has_repo) {
+        shiny::span(class = paste("tr-pill", status_class), shiny::span(class = "tr-pill-value", status_label))
+      }
+    ),
+
+    if (!is_dir_val) shiny::div(
+      class = "tr-actions-group",
+      shiny::div(class = "tr-actions-group-title", "Ações"),
+      if (is_formattable) {
+        shiny::actionButton("act_format", shiny::tagList(shiny::icon("wand-magic-sparkles"), " Formatar código"), class = "btn-default", style = "width:100%; justify-content:flex-start; margin-bottom:8px;")
+      },
+      if (diagnosis$has_repo && has_changes) {
+        shiny::actionButton("act_diff", shiny::tagList(shiny::icon("code-compare"), " Ver mudanças (diff)"), class = "btn-default", style = "width:100%; justify-content:flex-start; margin-bottom:8px;")
+      }
+    ),
+
+    shiny::div(
+      class = "tr-actions-group",
+      shiny::div(class = "tr-actions-group-title", "Renomear"),
+      shiny::textInput("act_rename_target", label = NULL, value = selected, width = "100%"),
+      shiny::actionButton("act_rename", shiny::tagList(shiny::icon("pen"), " Renomear / mover"), class = "btn-default", style = "width:100%; justify-content:flex-start;")
+    ),
+
+    if (diagnosis$has_repo && has_changes) shiny::div(
+      class = "tr-actions-group",
+      shiny::div(class = "tr-actions-group-title", "Salvar versão (commit)"),
+      shiny::textInput("act_commit_message", label = NULL, value = "", placeholder = "O que você mudou neste arquivo?", width = "100%"),
+      shiny::actionButton("act_commit", shiny::tagList(shiny::icon("floppy-disk"), " Commit deste arquivo"), class = "btn-primary", style = "width:100%; justify-content:flex-start;")
+    ),
+
+    shiny::div(
+      class = "tr-actions-group tr-actions-danger",
+      shiny::div(class = "tr-actions-group-title", "Zona de perigo"),
+      shiny::actionButton("act_delete", shiny::tagList(shiny::icon("trash"), " Excluir"), class = "btn-danger", style = "width:100%; justify-content:flex-start;")
+    )
+  )
 }
 
 trackR_panel_css <- function() {
@@ -2520,6 +2853,211 @@ trackR_panel_css <- function() {
     line-height: 1.4;
   }
   
+  /* Unified File Explorer (3 columns) */
+  .tr-explorer {
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(240px, 300px);
+    gap: 16px;
+    align-items: stretch;
+    min-height: 480px;
+  }
+  @media (max-width: 980px) {
+    .tr-explorer {
+      grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
+    }
+    .tr-explorer-actions {
+      grid-column: 1 / -1;
+    }
+  }
+  @media (max-width: 680px) {
+    .tr-explorer {
+      grid-template-columns: 1fr;
+    }
+  }
+  .tr-explorer-tree,
+  .tr-explorer-content,
+  .tr-explorer-actions {
+    background: #0D0D0D;
+    border: 1px solid #2D2D2D;
+    border-radius: 8px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .tr-explorer-toolbar {
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+    border-bottom: 1px solid #2D2D2D;
+    flex-shrink: 0;
+  }
+  .tr-explorer-toolbar .btn {
+    height: 32px !important;
+    padding: 0 12px !important;
+  }
+  .tr-explorer-tree-body {
+    padding: 10px;
+    overflow-y: auto;
+    max-height: 560px;
+    flex-grow: 1;
+  }
+  .tr-explorer-content {
+    overflow: hidden;
+  }
+  .tr-explorer-actions {
+    padding: 16px;
+    overflow-y: auto;
+    max-height: 620px;
+  }
+
+  /* Code preview (center column) */
+  .tr-code-preview {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+  .tr-code-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #2D2D2D;
+    flex-shrink: 0;
+  }
+  .tr-code-filename {
+    font-weight: 600;
+    font-size: 14px;
+    color: #EDEDED;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+  .tr-code-meta {
+    font-size: 11px;
+    color: #71717A;
+    white-space: nowrap;
+  }
+  .tr-code-body {
+    overflow: auto;
+    padding: 8px 0;
+    flex-grow: 1;
+    max-height: 560px;
+  }
+  .tr-code-row {
+    display: flex;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+  .tr-code-row:hover {
+    background: #161616;
+  }
+  .tr-code-gutter {
+    flex-shrink: 0;
+    width: 44px;
+    text-align: right;
+    padding-right: 14px;
+    color: #4B4B52;
+    user-select: none;
+  }
+  .tr-code-line {
+    white-space: pre;
+    color: #D4D4D8;
+    padding-right: 16px;
+  }
+  .tr-code-truncated {
+    padding: 10px 16px;
+    font-size: 12px;
+    color: #A1A1AA;
+    border-top: 1px solid #2D2D2D;
+    background: #111111;
+  }
+  .tr-preview-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    height: 100%;
+    min-height: 320px;
+    padding: 32px;
+    gap: 8px;
+  }
+  .tr-preview-empty-icon {
+    font-size: 38px;
+    opacity: 0.5;
+  }
+  .tr-preview-empty-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #D4D4D8;
+  }
+  .tr-preview-empty-hint {
+    font-size: 13px;
+    color: #71717A;
+    max-width: 340px;
+    line-height: 1.5;
+  }
+
+  /* Actions panel (right column) */
+  .tr-actions-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 12px;
+    height: 100%;
+    min-height: 280px;
+    color: #71717A;
+  }
+  .tr-actions-empty-icon {
+    font-size: 26px;
+    opacity: 0.5;
+  }
+  .tr-actions-empty-text {
+    font-size: 13px;
+    max-width: 220px;
+    line-height: 1.5;
+  }
+  .tr-actions-head {
+    padding-bottom: 14px;
+    border-bottom: 1px solid #2D2D2D;
+    margin-bottom: 16px;
+  }
+  .tr-actions-filename {
+    font-weight: 600;
+    font-size: 15px;
+    color: #EDEDED;
+    word-break: break-word;
+  }
+  .tr-actions-path {
+    font-size: 11px;
+    color: #71717A;
+    word-break: break-all;
+    margin: 2px 0 10px 0;
+  }
+  .tr-actions-group {
+    margin-bottom: 20px;
+  }
+  .tr-actions-group-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #71717A;
+    margin-bottom: 10px;
+  }
+  .tr-actions-danger .tr-actions-group-title {
+    color: #F87171;
+  }
+  .tr-inline-diff {
+    border-top: 1px solid #2D2D2D;
+    padding: 12px 16px;
+    overflow: auto;
+    max-height: 300px;
+  }
+
   /* Tree Card and Previews */
   .tr-tree-card {
     background: #0D0D0D;
