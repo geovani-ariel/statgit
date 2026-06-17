@@ -230,8 +230,13 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
       shiny::HTML(render_project_tree_html(input$project_template %||% "analise_exploratoria", isTRUE(input$project_include_data)))
     })
     
-    output$project_structure_preview_organize <- shiny::renderUI({
-      shiny::HTML(render_project_tree_html(input$project_structure_template %||% "analise_exploratoria", isTRUE(input$project_structure_include_data)))
+    output$project_organize_diff <- shiny::renderUI({
+      shiny::req(d())
+      shiny::HTML(render_project_organize_diff_html(
+        project_path,
+        input$project_structure_template %||% "analise_exploratoria",
+        isTRUE(input$project_structure_include_data)
+      ))
     })
     
     output$project_organize_status <- shiny::renderUI({
@@ -502,10 +507,6 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
 
     shiny::observeEvent(input$open_import_modal, {
       shiny::showModal(import_modal_ui())
-    }, ignoreInit = TRUE)
-
-    shiny::observeEvent(input$open_organize_modal, {
-      shiny::showModal(organize_modal_ui())
     }, ignoreInit = TRUE)
 
     shiny::observeEvent(input$act_format, {
@@ -875,6 +876,7 @@ project_module_ui <- function() {
   panel_section(
     "Gerenciar Projeto",
     shiny::tabsetPanel(
+      id = "project_tabs",
       type = "pills",
       shiny::tabPanel(
         "Criar",
@@ -917,31 +919,7 @@ project_module_ui <- function() {
           ),
           shiny::div(
             shiny::tags$label("Modelo de Projeto", style = "font-weight: 600; font-size: 14px; margin-bottom: 16px; display: block; color: #EDEDED;"),
-            shiny::div(
-              class = "tr-template-selector",
-              shiny::radioButtons(
-                "project_template",
-                label = NULL,
-                width = "100%",
-                choiceNames = list(
-                  shiny::HTML("<div class='tr-template-card'><div class='tr-template-title'>🔍 Análise Exploratória</div><div class='tr-template-desc'>Roteiros simples e análise rápida de dados.</div></div>"),
-                  shiny::HTML("<div class='tr-template-card'><div class='tr-template-title'>📚 Trabalho da Disciplina</div><div class='tr-template-desc'>Estrutura padrão para tarefas e entregas acadêmicas.</div></div>"),
-                  shiny::HTML("<div class='tr-template-card'><div class='tr-template-title'>🧪 Iniciação Científica</div><div class='tr-template-desc'>Para pesquisas com relatórios parciais e modelagem.</div></div>"),
-                  shiny::HTML("<div class='tr-template-card'><div class='tr-template-title'>🎓 Trabalho de Conclusão (TCC)</div><div class='tr-template-desc'>Monografia com pastas dedicadas para dados e resultados.</div></div>"),
-                  shiny::HTML("<div class='tr-template-card'><div class='tr-template-title'>📝 Artigo com Quarto</div><div class='tr-template-desc'>Arquivos prontos para escrita científica com Quarto (.qmd).</div></div>"),
-                  shiny::HTML("<div class='tr-template-card'><div class='tr-template-title'>👥 Projeto em Grupo</div><div class='tr-template-desc'>Inclui guias de contribuição e scripts compartilhados.</div></div>")
-                ),
-                choiceValues = c(
-                  "analise_exploratoria",
-                  "trabalho_disciplina",
-                  "iniciacao_cientifica",
-                  "tcc",
-                  "artigo_quarto",
-                  "projeto_grupo"
-                ),
-                selected = "analise_exploratoria"
-              )
-            ),
+            project_template_cards_ui("project_template", selected = "analise_exploratoria"),
             shiny::div(
               class = "tr-tree-card",
               shiny::h5("Prévia da Estrutura a ser Criada:", style = "margin-top: 0; margin-bottom: 12px; font-weight: 600; color: #EDEDED;"),
@@ -977,6 +955,34 @@ project_module_ui <- function() {
             shiny::uiOutput("recent_projects_list")
           )
         )
+      ),
+      shiny::tabPanel(
+        "Organizar",
+        shiny::br(),
+        shiny::div(
+          class = "tr-project-layout",
+          shiny::div(
+            style = "display: flex; flex-direction: column; gap: 15px;",
+            shiny::tags$label("Modelo de estrutura", style = "font-weight: 600; font-size: 14px; margin-bottom: 6px; display: block; color: #EDEDED;"),
+            shiny::div(
+              style = "padding: 12px; border-radius: 8px; background: #111827; border: 1px solid #1F2937; color: #D1D5DB; font-size: 13px; line-height: 1.5;",
+              shiny::icon("shield-halved"),
+              " Organizar é seguro: cria apenas as pastas e arquivos que faltam. ",
+              shiny::tags$b("Seus arquivos atuais não são movidos nem alterados."),
+            ),
+            project_template_cards_ui("project_structure_template", selected = "analise_exploratoria"),
+            shiny::div(
+              class = "tr-checkbox-group",
+              shiny::checkboxInput("project_structure_include_data", "Incluir pastas data/raw e data/processed", value = TRUE)
+            ),
+            shiny::actionButton("project_structure", "Organizar estrutura", class = "btn-primary", style = "width: 100%; font-weight: 600; font-size: 15px; height: 42px !important;"),
+            shiny::uiOutput("project_organize_status")
+          ),
+          shiny::div(
+            class = "tr-organize-diff",
+            shiny::uiOutput("project_organize_diff")
+          )
+        )
       )
     )
   )
@@ -994,8 +1000,7 @@ files_module_ui <- function(diagnosis) {
         shiny::div(
           class = "tr-explorer-toolbar",
           shiny::actionButton("open_create_modal", shiny::tagList(shiny::icon("plus"), " Criar"), class = "btn-primary btn-sm"),
-          shiny::actionButton("open_import_modal", shiny::tagList(shiny::icon("file-import"), " Importar"), class = "btn-default btn-sm"),
-          shiny::actionButton("open_organize_modal", shiny::icon("folder-tree"), class = "btn-default btn-sm", title = "Organizar estrutura de pastas")
+          shiny::actionButton("open_import_modal", shiny::tagList(shiny::icon("file-import"), " Importar"), class = "btn-default btn-sm")
         ),
         shiny::div(
           class = "tr-explorer-tree-body",
@@ -1087,19 +1092,6 @@ create_modal_ui <- function() {
       shiny::modalButton("Cancelar"),
       shiny::actionButton("file_create", "Criar arquivo", class = "btn-primary")
     )
-  )
-}
-
-organize_modal_ui <- function() {
-  shiny::modalDialog(
-    title = "Organizar estrutura do projeto",
-    easyClose = TRUE,
-    shiny::div(
-      class = "tr-organize-modal-content",
-      organize_module_ui()
-    ),
-    footer = shiny::modalButton("Fechar"),
-    size = "l"
   )
 }
 
@@ -1542,39 +1534,6 @@ project_format_file_choices <- function(path) {
   sort(unique(files))
 }
 
-organize_module_ui <- function() {
-  shiny::div(
-    class = "tr-project-layout",
-    shiny::div(
-      style = "display: flex; flex-direction: column; gap: 15px;",
-      shiny::radioButtons(
-        "project_structure_template",
-        "Modelo de estrutura",
-        choices = c(
-          "Análise Exploratória" = "analise_exploratoria",
-          "Trabalho da Disciplina" = "trabalho_disciplina",
-          "Iniciação Científica" = "iniciacao_cientifica",
-          "TCC" = "tcc",
-          "Artigo com Quarto" = "artigo_quarto",
-          "Projeto em Grupo" = "projeto_grupo"
-        ),
-        selected = "analise_exploratoria"
-      ),
-      shiny::div(
-        class = "tr-checkbox-group",
-        shiny::checkboxInput("project_structure_include_data", "Incluir pastas data/raw e data/processed", value = TRUE)
-      ),
-      shiny::actionButton("project_structure", "Organizar estrutura", class = "btn-primary", style = "width: 100%; font-weight: 600; font-size: 15px; height: 42px !important;"),
-      shiny::uiOutput("project_organize_status")
-    ),
-    shiny::div(
-      class = "tr-tree-card",
-      shiny::h5("Prévia da estrutura", style = "margin-top: 0; margin-bottom: 12px; font-weight: 600; color: #EDEDED;"),
-      shiny::uiOutput("project_structure_preview_organize")
-    )
-  )
-}
-
 excluir_module_ui <- function(diagnosis) {
   all_items <- project_item_choices(diagnosis$current_path)
   choices <- c("Selecione..." = "", stats::setNames(all_items, all_items))
@@ -1747,79 +1706,139 @@ render_commit_timeline_html <- function(diagnosis) {
   )
 }
 
-render_project_tree_html <- function(template, include_data) {
-  files_list <- list(
-    analise_exploratoria = c(
-      "📁 data/ (Pasta de dados)",
-      "  📁 raw/ (Dados brutos de entrada)",
-      "  📁 processed/ (Dados limpos para análise)",
-      "📁 reports/ (Relatórios e manuscritos)",
-      "  📄 notas.qmd (Notas e documentação)",
-      "📁 scripts/ (Scripts de análise)",
-      "  📄 01-exploracao.R (Script inicial)",
-      "📁 figs/ (Figuras e gráficos gerados)",
-      "📄 README.md (Documentação do projeto)",
-      "📄 .gitignore (Configuração do Git)"
+# Fonte unica de modelos de projeto: metadados do card + arvore de previa.
+# Usada pela galeria de "Criar", pela aba "Organizar" e pela previa de arvore.
+project_template_catalog <- function() {
+  list(
+    analise_exploratoria = list(
+      icon = "🔍",
+      title = "Análise Exploratória",
+      desc = "Roteiros simples e análise rápida de dados.",
+      tree = c(
+        "📁 data/ (Pasta de dados)",
+        "  📁 raw/ (Dados brutos de entrada)",
+        "  📁 processed/ (Dados limpos para análise)",
+        "📁 reports/ (Relatórios e manuscritos)",
+        "  📄 notas.qmd (Notas e documentação)",
+        "📁 scripts/ (Scripts de análise)",
+        "  📄 01-exploracao.R (Script inicial)",
+        "📁 figs/ (Figuras e gráficos gerados)",
+        "📄 README.md (Documentação do projeto)",
+        "📄 .gitignore (Configuração do Git)"
+      )
     ),
-    trabalho_disciplina = c(
-      "📁 data/ (Pasta de dados)",
-      "  📁 raw/ (Dados brutos de entrada)",
-      "  📁 processed/ (Dados limpos para análise)",
-      "📁 reports/ (Relatórios e manuscritos)",
-      "  📄 relatorio-final.qmd (Relatório final)",
-      "📁 scripts/ (Scripts de análise)",
-      "  📄 01-preparacao.R (Limpeza dos dados)",
-      "  📄 02-analise.R (Modelagem e gráficos)",
-      "📁 figs/ (Figuras e gráficos gerados)",
-      "📄 README.md (Documentação do projeto)",
-      "📄 .gitignore (Configuração do Git)"
+    trabalho_disciplina = list(
+      icon = "📚",
+      title = "Trabalho da Disciplina",
+      desc = "Estrutura padrão para tarefas e entregas acadêmicas.",
+      tree = c(
+        "📁 data/ (Pasta de dados)",
+        "  📁 raw/ (Dados brutos de entrada)",
+        "  📁 processed/ (Dados limpos para análise)",
+        "📁 reports/ (Relatórios e manuscritos)",
+        "  📄 relatorio-final.qmd (Relatório final)",
+        "📁 scripts/ (Scripts de análise)",
+        "  📄 01-preparacao.R (Limpeza dos dados)",
+        "  📄 02-analise.R (Modelagem e gráficos)",
+        "📁 figs/ (Figuras e gráficos gerados)",
+        "📄 README.md (Documentação do projeto)",
+        "📄 .gitignore (Configuração do Git)"
+      )
     ),
-    iniciacao_cientifica = c(
-      "📁 data/ (Pasta de dados)",
-      "  📁 raw/ (Dados brutos)",
-      "  📁 processed/ (Dados limpos)",
-      "📁 reports/ (Relatórios)",
-      "  📄 plano-de-trabalho.qmd (Planejamento)",
-      "  📄 relatorio-parcial.qmd (Andamento)",
-      "📁 scripts/ (Scripts)",
-      "  📄 01-limpeza.R (Tratamento inicial)",
-      "  📄 02-modelagem.R (Análise principal)",
-      "📁 figs/ (Figuras geradas)",
-      "📄 README.md (Descrição da pesquisa)",
-      "📄 .gitignore (Configuração do Git)"
+    iniciacao_cientifica = list(
+      icon = "🧪",
+      title = "Iniciação Científica",
+      desc = "Para pesquisas com relatórios parciais e modelagem.",
+      tree = c(
+        "📁 data/ (Pasta de dados)",
+        "  📁 raw/ (Dados brutos)",
+        "  📁 processed/ (Dados limpos)",
+        "📁 reports/ (Relatórios)",
+        "  📄 plano-de-trabalho.qmd (Planejamento)",
+        "  📄 relatorio-parcial.qmd (Andamento)",
+        "📁 scripts/ (Scripts)",
+        "  📄 01-limpeza.R (Tratamento inicial)",
+        "  📄 02-modelagem.R (Análise principal)",
+        "📁 figs/ (Figuras geradas)",
+        "📄 README.md (Descrição da pesquisa)",
+        "📄 .gitignore (Configuração do Git)"
+      )
     ),
-    tcc = c(
-      "📁 data/ (Pasta de dados)",
-      "  📁 raw/ (Dados originais)",
-      "  📁 processed/ (Dados finais)",
-      "📁 reports/ (Manuscritos)",
-      "  📄 tcc.qmd (Arquivo principal do TCC)",
-      "📁 scripts/ (Scripts de análise)",
-      "  📄 01-preparacao.R (Importação)",
-      "  📄 02-resultados.R (Geração de tabelas)",
-      "📁 figs/ (Figuras)",
-      "📄 README.md (Apresentação do TCC)",
-      "📄 .gitignore (Configuração do Git)"
+    tcc = list(
+      icon = "🎓",
+      title = "Trabalho de Conclusão (TCC)",
+      desc = "Monografia com pastas dedicadas para dados e resultados.",
+      tree = c(
+        "📁 data/ (Pasta de dados)",
+        "  📁 raw/ (Dados originais)",
+        "  📁 processed/ (Dados finais)",
+        "📁 reports/ (Manuscritos)",
+        "  📄 tcc.qmd (Arquivo principal do TCC)",
+        "📁 scripts/ (Scripts de análise)",
+        "  📄 01-preparacao.R (Importação)",
+        "  📄 02-resultados.R (Geração de tabelas)",
+        "📁 figs/ (Figuras)",
+        "📄 README.md (Apresentação do TCC)",
+        "📄 .gitignore (Configuração do Git)"
+      )
     ),
-    artigo_quarto = c(
-      "📁 reports/ (Manuscritos)",
-      "  📄 artigo.qmd (Artigo científico)",
-      "📄 _quarto.yml (Configuração de publicação)",
-      "📄 refs.bib (Referências bibliográficas)",
-      "📄 README.md (Descrição)",
-      "📄 .gitignore (Configuração do Git)"
+    artigo_quarto = list(
+      icon = "📝",
+      title = "Artigo com Quarto",
+      desc = "Arquivos prontos para escrita científica com Quarto (.qmd).",
+      tree = c(
+        "📁 reports/ (Manuscritos)",
+        "  📄 artigo.qmd (Artigo científico)",
+        "📄 _quarto.yml (Configuração de publicação)",
+        "📄 refs.bib (Referências bibliográficas)",
+        "📄 README.md (Descrição)",
+        "📄 .gitignore (Configuração do Git)"
+      )
     ),
-    projeto_grupo = c(
-      "📁 reports/ (Relatórios do grupo)",
-      "  📄 andamento.qmd (Acompanhamento)",
-      "📁 scripts/ (Scripts compartilhados)",
-      "  📄 00-setup.R (Instalação e carregamento de pacotes)",
-      "📄 CONTRIBUTING.md (Guia de colaboração)",
-      "📄 README.md (Manual do grupo)",
-      "📄 .gitignore (Configuração do Git)"
+    projeto_grupo = list(
+      icon = "👥",
+      title = "Projeto em Grupo",
+      desc = "Inclui guias de contribuição e scripts compartilhados.",
+      tree = c(
+        "📁 reports/ (Relatórios do grupo)",
+        "  📄 andamento.qmd (Acompanhamento)",
+        "📁 scripts/ (Scripts compartilhados)",
+        "  📄 00-setup.R (Instalação e carregamento de pacotes)",
+        "📄 CONTRIBUTING.md (Guia de colaboração)",
+        "📄 README.md (Manual do grupo)",
+        "📄 .gitignore (Configuração do Git)"
+      )
     )
-  )[[template]]
-  
+  )
+}
+
+# Galeria de cards de modelo, compartilhada por "Criar" e "Organizar".
+project_template_cards_ui <- function(input_id, selected = "analise_exploratoria") {
+  catalog <- project_template_catalog()
+  shiny::div(
+    class = "tr-template-selector",
+    shiny::radioButtons(
+      input_id,
+      label = NULL,
+      width = "100%",
+      choiceNames = unname(lapply(catalog, function(tpl) {
+        shiny::HTML(sprintf(
+          "<div class='tr-template-card'><div class='tr-template-title'>%s %s</div><div class='tr-template-desc'>%s</div></div>",
+          tpl$icon,
+          htmltools::htmlEscape(tpl$title),
+          htmltools::htmlEscape(tpl$desc)
+        ))
+      })),
+      choiceValues = names(catalog),
+      selected = selected
+    )
+  )
+}
+
+render_project_tree_html <- function(template, include_data) {
+  catalog <- project_template_catalog()
+  files_list <- catalog[[template]]$tree
+
   if (isFALSE(include_data)) {
     files_list <- c(files_list, "📄 data/raw/README.md (Orientação de dados)", "📄 data/processed/README.md (Orientação)")
   }
@@ -1833,6 +1852,107 @@ render_project_tree_html <- function(template, include_data) {
   }, character(1))
   
   paste(lines, collapse = "")
+}
+
+# Calcula, de forma fiel ao project_organize(), o esqueleto que sera garantido
+# e marca cada item como novo (sera criado) ou existente (sera preservado).
+project_organize_planned_entries <- function(path, template, include_data) {
+  project_path <- normalize_project_path(path)
+  project_name <- basename(project_path)
+
+  starter <- names(template_starter_files(template, project_name))
+  files <- c("README.md", starter)
+  if (isFALSE(include_data)) {
+    files <- c(files, "data/raw/README.md", "data/processed/README.md")
+  }
+
+  dirs <- unique(c(base_project_directories(), dirname(files)))
+  dirs <- dirs[nzchar(dirs) & dirs != "."]
+
+  entries <- rbind(
+    data.frame(rel = dirs, is_dir = TRUE, stringsAsFactors = FALSE),
+    data.frame(rel = files, is_dir = FALSE, stringsAsFactors = FALSE)
+  )
+  entries <- entries[!duplicated(entries$rel), , drop = FALSE]
+  entries <- entries[order(entries$rel), , drop = FALSE]
+
+  entries$exists <- vapply(seq_len(nrow(entries)), function(i) {
+    full <- fs::path(project_path, entries$rel[i])
+    fs::file_exists(full) || fs::dir_exists(full)
+  }, logical(1))
+
+  entries
+}
+
+render_simple_tree_html <- function(rel_paths, muted = TRUE) {
+  if (length(rel_paths) == 0) {
+    return("<div style='color: #71717A; font-style: italic; font-size: 12px;'>Projeto vazio ou sem arquivos.</div>")
+  }
+  base_color <- if (muted) "#71717A" else "#A1A1AA"
+  lines <- vapply(sort(rel_paths), function(rel) {
+    parts <- strsplit(rel, "/", fixed = TRUE)[[1]]
+    indent <- paste(rep("  ", length(parts) - 1), collapse = "")
+    name <- parts[length(parts)]
+    is_dir <- grepl("/$", rel) || tolower(fs::path_ext(name)) == ""
+    icon <- if (is_dir) "<span style='color: #3B82F6;'>📁</span>" else "<span style='color: #10B981;'>📄</span>"
+    paste0(
+      "<div style='font-family: monospace; font-size: 12px; margin-bottom: 4px; line-height: 1.4; white-space: pre; color: ", base_color, ";'>",
+      htmltools::htmlEscape(indent), icon, " ", htmltools::htmlEscape(name),
+      "</div>"
+    )
+  }, character(1))
+  paste(lines, collapse = "")
+}
+
+render_project_organize_diff_html <- function(path, template, include_data) {
+  if (is.null(path) || !nzchar(path) || !fs::dir_exists(path)) {
+    return("<div style='color: #EF4444; font-style: italic;'>Caminho do projeto inválido.</div>")
+  }
+
+  current <- list_project_files_tree(path)
+  entries <- project_organize_planned_entries(path, template, include_data)
+  n_new <- sum(!entries$exists)
+
+  after_lines <- vapply(seq_len(nrow(entries)), function(i) {
+    rel <- entries$rel[i]
+    is_new <- !entries$exists[i]
+    parts <- strsplit(rel, "/", fixed = TRUE)[[1]]
+    indent <- paste(rep("  ", length(parts) - 1), collapse = "")
+    name <- parts[length(parts)]
+    icon <- if (entries$is_dir[i]) "<span style='color: #3B82F6;'>📁</span>" else "<span style='color: #10B981;'>📄</span>"
+    if (is_new) {
+      tag <- " <span style='font-size: 9px; background: #064E3B; color: #6EE7B7; padding: 1px 5px; border-radius: 4px; margin-left: 6px; font-weight: 600; text-transform: uppercase;'>novo</span>"
+      color <- "#6EE7B7"
+    } else {
+      tag <- ""
+      color <- "#52525B"
+    }
+    paste0(
+      "<div style='font-family: monospace; font-size: 12px; margin-bottom: 4px; line-height: 1.4; white-space: pre; color: ", color, ";'>",
+      htmltools::htmlEscape(indent), icon, " ", htmltools::htmlEscape(name), tag,
+      "</div>"
+    )
+  }, character(1))
+
+  summary_txt <- if (n_new == 0) {
+    "<span style='color: #6EE7B7;'>Tudo pronto — a estrutura deste modelo já existe.</span>"
+  } else {
+    sprintf("<span style='color: #6EE7B7; font-weight: 600;'>%d item(ns) será(ão) criado(s)</span> <span style='color: #71717A;'>· os demais já existem e ficam intactos.</span>", n_new)
+  }
+
+  paste0(
+    "<div class='tr-organize-cols'>",
+    "<div class='tr-tree-card'>",
+    "<h5 style='margin-top: 0; margin-bottom: 12px; font-weight: 600; color: #EDEDED;'>Seu projeto agora</h5>",
+    render_simple_tree_html(current),
+    "</div>",
+    "<div class='tr-tree-card'>",
+    "<h5 style='margin-top: 0; margin-bottom: 12px; font-weight: 600; color: #EDEDED;'>Após organizar</h5>",
+    paste(after_lines, collapse = ""),
+    "</div>",
+    "</div>",
+    "<div style='margin-top: 12px; font-size: 12px; line-height: 1.5;'>", summary_txt, "</div>"
+  )
 }
 
 list_project_files_tree <- function(path) {
@@ -3106,15 +3226,19 @@ trackR_panel_css <- function() {
     white-space: pre;
   }
 
-  /* Organize Modal */
-  .tr-organize-modal-content .tr-project-layout {
+  /* Organize diff (Atual -> Depois) */
+  .tr-organize-cols {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 24px;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
   }
-  .tr-organize-modal-content .tr-tree-card {
-    max-height: 350px;
-    min-height: 250px;
+  .tr-organize-cols .tr-tree-card {
+    max-height: 420px;
+  }
+  @media (max-width: 720px) {
+    .tr-organize-cols {
+      grid-template-columns: 1fr;
+    }
   }
 
   /* Recent Projects */
