@@ -1362,7 +1362,7 @@ criar_module_ui <- function(diagnosis) {
       )
     ),
     shiny::div(
-      style = "display: flex; flex-direction: column; gap: 16px;",
+      style = "display: flex; flex-direction: column; gap: 16px; min-height: 0;",
       shiny::div(
         class = "tr-tree-card",
         shiny::h5("Sugestões rápidas:", style = "margin-top: 0; margin-bottom: 12px; font-weight: 600; color: #EDEDED;"),
@@ -1374,7 +1374,7 @@ criar_module_ui <- function(diagnosis) {
           shiny::tags$li("Dados tabulares simples: crie CSV direto em data/raw.")
         )
       ),
-      project_files_explorer_card("Estrutura atual do projeto")
+      project_files_explorer_card("Arquivos Atuais do Projeto")
     )
   )
 }
@@ -2518,6 +2518,8 @@ trackR_panel_css <- function() {
     border: 1px solid #2D2D2D;
     padding: 16px;
     border-radius: 8px;
+    overflow-y: auto;
+    max-height: 500px;
   }
   .tr-tree-item {
     width: 100%;
