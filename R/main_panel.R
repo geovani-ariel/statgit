@@ -176,7 +176,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
             class = "tr-summary-header",
             shiny::div(
               style = "margin-bottom: 4px;",
-              shiny::strong(project_name, style = "font-size: 22px; color: #60A5FA; letter-spacing: -0.5px;")
+              shiny::strong(project_name, style = "font-size: 22px; color: #2563EB; letter-spacing: -0.5px;")
             ),
             shiny::div(
               class = "tr-summary-grid",
@@ -239,7 +239,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
       items <- lapply(folders, function(f) {
         exists <- fs::dir_exists(fs::path(path, f))
         icon_html <- if (exists) {
-          "<span style='color: #10B981; margin-right: 8px;'>✓</span>"
+          "<span style='color: #9333EA; margin-right: 8px;'>✓</span>"
         } else {
           "<span style='color: #EF4444; margin-right: 8px;'>✗</span>"
         }
@@ -1226,8 +1226,8 @@ changes_module_ui <- function(diagnosis) {
     panel_section(
       "Salvar nova versão (Commit)",
       shiny::div(
-        style = "background: #022C22; border: 1px solid #064E3B; border-left: 4px solid #10B981; padding: 16px; margin-bottom: 24px; border-radius: 8px;",
-        shiny::p("O commit funciona como um 'ponto de salvamento' (savepoint) do seu projeto. Você sempre poderá voltar a ele se algo der errado no futuro.", style = "margin-bottom: 0; color: #D1FAE5; font-size: 14px;")
+        style = "background: #2E1065; border: 1px solid #6B21A8; border-left: 4px solid #9333EA; padding: 16px; margin-bottom: 24px; border-radius: 8px;",
+        shiny::p("O commit funciona como um 'ponto de salvamento' (savepoint) do seu projeto. Você sempre poderá voltar a ele se algo der errado no futuro.", style = "margin-bottom: 0; color: #EDE9FE; font-size: 14px;")
       ),
       shiny::selectInput("changes_files", "Arquivos a incluir nesta versão", choices = files, multiple = TRUE),
       shiny::textInput("changes_commit_message", "Mensagem curta descrevendo o que você fez", value = "Atualiza análise"),
@@ -1495,19 +1495,16 @@ panel_section <- function(title, ...) {
 }
 
 overview_module_ui <- function(diagnosis) {
-  next_step <- next_step_message(diagnosis)
-
   shiny::tagList(
-    shiny::div(
-      style = "padding: 24px; border-radius: 8px; background: #172554; border: 1px solid #1E3A8A; border-left: 4px solid #3B82F6; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.5);",
-      shiny::h4(shiny::icon("lightbulb"), " Ação Recomendada", style = "margin: 0; color: #DBEAFE; font-weight: 600; font-size: 16px;"),
-      shiny::p(next_step, style = "margin: 0; color: #DBEAFE; font-size: 15px;")
-    ),
-
     if (diagnosis$has_commits) shiny::tagList(
-      shiny::h3("Histórico de Commits", style = "margin-top: 32px; margin-bottom: 16px; font-weight: 600; color: #EDEDED;"),
+      shiny::h3("Histórico de Commits", style = "margin: 0 0 24px 0; font-weight: 600; color: #EDEDED; font-size: 18px;"),
       shiny::HTML(render_commit_timeline_html(diagnosis))
-    )
+    ) else {
+      shiny::div(
+        style = "padding: 24px; text-align: center; color: #71717A;",
+        shiny::p("Nenhum commit ainda. Comece adicionando suas mudanças na aba 'Git e GitHub'.")
+      )
+    }
   )
 }
 
@@ -1762,8 +1759,8 @@ render_project_files_explorer_html <- function(path, diagnosis, selected = "") {
       staged <- isTRUE(status_row$staged[[1]])
       
       if (staged) {
-        status_indicator <- " <span style='font-size: 9px; background: #064E3B; color: #10B981; padding: 1px 4px; border-radius: 4px; margin-left: 6px; font-weight: 500; text-transform: uppercase;'>preparado</span>"
-        status_style <- "color: #10B981;"
+        status_indicator <- " <span style='font-size: 9px; background: #6B21A8; color: #D8B4FE; padding: 1px 4px; border-radius: 4px; margin-left: 6px; font-weight: 500; text-transform: uppercase;'>preparado</span>"
+        status_style <- "color: #D8B4FE;"
       } else if (status == "modified") {
         status_indicator <- " <span style='font-size: 9px; background: #78350F; color: #F59E0B; padding: 1px 4px; border-radius: 4px; margin-left: 6px; font-weight: 500; text-transform: uppercase;'>modificado</span>"
         status_style <- "color: #F59E0B;"
@@ -1789,7 +1786,7 @@ render_project_files_explorer_html <- function(path, diagnosis, selected = "") {
       if (ext %in% c("qmd", "rmd")) {
         "<span style='color: #8B5CF6;'>📊</span>"
       } else if (ext == "r") {
-        "<span style='color: #10B981;'>📄</span>"
+        "<span style='color: #9333EA;'>📄</span>"
       } else if (ext %in% c("csv", "xlsx", "rds", "data")) {
         "<span style='color: #F59E0B;'>📊</span>"
       } else {
@@ -1946,22 +1943,22 @@ trackR_panel_css <- function() {
     border-color: #404040 !important;
   }
   .btn-primary {
-    background-color: #EDEDED !important;
-    border: 1px solid #EDEDED !important;
-    color: #000000 !important;
+    background-color: #2563EB !important;
+    border: 1px solid #1D4ED8 !important;
+    color: #FFFFFF !important;
   }
   .btn-primary:hover {
-    background-color: #CCCCCC !important;
-    border-color: #CCCCCC !important;
+    background-color: #1D4ED8 !important;
+    border-color: #1D4ED8 !important;
   }
   .btn-success {
-    background-color: #166534 !important; /* Muted Green */
-    border: 1px solid #14532D !important;
+    background-color: #2563EB !important; /* Blue */
+    border: 1px solid #1D4ED8 !important;
     color: #FFFFFF !important;
   }
   .btn-success:hover {
-    background-color: #15803D !important;
-    border-color: #15803D !important;
+    background-color: #1D4ED8 !important;
+    border-color: #1D4ED8 !important;
   }
   .btn-danger {
     background-color: #991B1B !important; /* Muted Red */
@@ -2132,8 +2129,8 @@ trackR_panel_css <- function() {
     background: #262626;
   }
   .tr-pill.ok {
-    border-color: #059669;
-    background: rgba(5, 150, 105, 0.15);
+    border-color: #9333EA;
+    background: rgba(147, 51, 234, 0.15);
   }
   .tr-pill.warn {
     border-color: #B45309;
@@ -2143,7 +2140,7 @@ trackR_panel_css <- function() {
     border-color: #991B1B;
     background: rgba(220, 38, 38, 0.15);
   }
-  .tr-pill.ok .tr-pill-value { color: #34D399; }
+  .tr-pill.ok .tr-pill-value { color: #D8B4FE; }
   .tr-pill.warn .tr-pill-value { color: #FCD34D; }
   .tr-pill.error .tr-pill-value { color: #FCA5A5; }
   
@@ -2235,9 +2232,9 @@ trackR_panel_css <- function() {
     font-weight: 400;
   }
   .tr-git-step-title.complete .tr-git-step-number {
-    background: #064E3B;
-    border-color: #10B981;
-    color: #D1FAE5;
+    background: #6B21A8;
+    border-color: #9333EA;
+    color: #EDE9FE;
   }
   .tr-git-step-title.blocked .tr-git-step-number {
     background: #2D2D2D;
@@ -2249,16 +2246,16 @@ trackR_panel_css <- function() {
     grid-template-columns: auto minmax(0, 1fr);
     gap: 10px;
     align-items: center;
-    border: 1px solid #064E3B;
+    border: 1px solid #6B21A8;
     border-radius: 6px;
-    background: rgba(6, 78, 59, 0.24);
-    color: #A7F3D0;
+    background: rgba(107, 33, 168, 0.15);
+    color: #D8B4FE;
     padding: 8px 10px;
     margin-bottom: 12px;
     font-size: 12px;
   }
   .tr-git-success-note strong {
-    color: #D1FAE5;
+    color: #E9D5FF;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -2616,7 +2613,7 @@ trackR_panel_css <- function() {
   .tr-timeline {
     position: relative;
     padding-left: 16px;
-    border-left: 2px solid #2D2D2D;
+    border-left: 2px solid #9333EA;
     margin-bottom: 24px;
   }
   .tr-timeline-item {
@@ -2634,19 +2631,22 @@ trackR_panel_css <- function() {
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: #1C1C1E;
-    border: 2px solid #3B82F6;
+    background: #9333EA;
+    border: 2px solid #9333EA;
     z-index: 1;
+    box-shadow: 0 0 8px rgba(147, 51, 234, 0.6);
   }
   .tr-timeline-content {
-    background: #1C1C1E;
-    border: 1px solid #2D2D2D;
+    background: #2E1065;
+    border: 1px solid #6B21A8;
     border-radius: 6px;
-    padding: 12px 16px;
-    transition: background-color 0.15s;
+    padding: 16px;
+    transition: all 0.15s ease;
   }
   .tr-timeline-content:hover {
-    background: #262626;
+    background: #3F1A7C;
+    border-color: #9333EA;
+    box-shadow: 0 2px 8px rgba(147, 51, 234, 0.2);
   }
   .tr-timeline-header {
     display: flex;
@@ -2665,16 +2665,17 @@ trackR_panel_css <- function() {
   }
   .tr-timeline-message {
     font-size: 14px;
-    color: #D4D4D8;
+    color: #EDEDED;
     margin-bottom: 10px;
     white-space: pre-wrap;
-    line-height: 1.4;
+    line-height: 1.5;
+    font-weight: 500;
   }
   .tr-timeline-hash {
     font-family: Menlo, Monaco, Consolas, monospace;
     font-size: 11px;
-    color: #60A5FA;
-    background: rgba(96, 165, 250, 0.1);
+    color: #D8B4FE;
+    background: rgba(147, 51, 234, 0.2);
     padding: 3px 6px;
     border-radius: 4px;
     display: inline-block;
