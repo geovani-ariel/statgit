@@ -1,6 +1,6 @@
-Name: git4stats
+Name: trackR
 Description: Abre o painel principal para gerenciar projeto, Git, relatorios e formatacao.
-Binding: addin_git4stats
+Binding: addin_trackR
 Interactive: true
 
 Name: Verificar Git do projeto

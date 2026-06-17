@@ -2,21 +2,21 @@
 #'
 #' @export
 addin_check_git <- function() {
-  check_git_setup(active_project_path())
+  git_check(active_project_path())
 }
 
-#' Addin para abrir o painel principal do git4stats
+#' Addin para abrir o painel principal do trackR
 #'
 #' @export
-addin_git4stats <- function() {
-  git4stats_panel(active_project_path())
+addin_trackR <- function() {
+  trackR(active_project_path())
 }
 
 #' Addin para abrir o wizard de configuracao Git
 #'
 #' @export
 addin_git_setup_wizard <- function() {
-  git_setup_wizard(active_project_path())
+  git_wizard(active_project_path())
 }
 
 #' Addin para criar o primeiro commit
@@ -39,42 +39,42 @@ addin_first_commit <- function() {
     message <- prompt_result %||% default_message
   }
 
-  first_commit(message = message, path = active_project_path())
+  git_commit_all(message = message, path = active_project_path())
 }
 
 #' Addin para ver o status Git do projeto atual
 #'
 #' @export
 addin_git_status <- function() {
-  git_status_pretty(active_project_path())
+  git_status(active_project_path())
 }
 
 #' Addin para pre-visualizar o knit do relatorio ativo
 #'
 #' @export
 addin_knit_preview <- function() {
-  preview_knit()
+  report_preview()
 }
 
 #' Addin para live preview do relatorio ativo
 #'
 #' @export
 addin_live_preview <- function() {
-  live_preview_knit()
+  report_live_preview()
 }
 
 #' Addin para formatar o arquivo ativo
 #'
 #' @export
 addin_format_active_file <- function() {
-  format_active_file()
+  code_format()
 }
 
 #' Addin para formatar os arquivos do projeto atual
 #'
 #' @export
 addin_format_project <- function() {
-  format_project_files(active_project_path())
+  code_format_all(active_project_path())
 }
 
 #' Addin para criar e trocar rapidamente de projeto
@@ -90,14 +90,14 @@ addin_project_manager <- function() {
 #'
 #' @return Invisivelmente, o caminho analisado.
 #' @export
-git_setup_wizard <- function(path = ".") {
+git_wizard <- function(path = ".") {
   ensure_suggested_package("shiny", "o assistente visual")
   ensure_suggested_package("miniUI", "o assistente visual")
 
   project_path <- normalize_project_path(path)
 
   ui <- miniUI::miniPage(
-    miniUI::gadgetTitleBar("git4stats: configurar Git neste projeto"),
+    miniUI::gadgetTitleBar("trackR: configurar Git neste projeto"),
     shiny::tags$head(
       shiny::tags$style(shiny::HTML(
         ".wizard-step-ok, .wizard-step-warn {padding: 8px 10px; border-radius: 6px; margin-bottom: 8px;}
@@ -163,13 +163,13 @@ git_setup_wizard <- function(path = ".") {
 
   shiny::runGadget(
     ui,
-    server = git_setup_wizard_server(project_path),
-    viewer = shiny::dialogViewer("git4stats")
+    server = git_wizard_server(project_path),
+    viewer = shiny::dialogViewer("trackR")
   )
   invisible(project_path)
 }
 
-git_setup_wizard_server <- function(project_path) {
+git_wizard_server <- function(project_path) {
   force(project_path)
 
   function(input, output, session) {
@@ -278,32 +278,32 @@ git_setup_wizard_server <- function(project_path) {
     }, ignoreInit = FALSE)
 
     shiny::observeEvent(input$init_repo, {
-      values$init_result <- capture_lines(init_git_project(project_path))
+      values$init_result <- capture_lines(git_init(project_path))
       refresh_diagnosis()
     })
 
     shiny::observeEvent(input$write_gitignore, {
       values$gitignore_result <- capture_lines(
-        create_r_gitignore(project_path, include_data = !isTRUE(input$ignore_data))
+        git_ignore(project_path, include_data = !isTRUE(input$ignore_data))
       )
     })
 
     shiny::observeEvent(input$write_template, {
       values$template_result <- capture_lines(
-        use_stats_project(project_path, include_data = isTRUE(input$template_data))
+        project_organize(project_path, include_data = isTRUE(input$template_data))
       )
     })
 
     shiny::observeEvent(input$run_commit, {
       values$commit_result <- capture_lines(
-        first_commit(message = input$commit_message, path = project_path)
+        git_commit_all(message = input$commit_message, path = project_path)
       )
       refresh_diagnosis()
     })
 
     shiny::observeEvent(input$connect_remote, {
       values$github_result <- capture_lines(
-        connect_github_repo(
+        github_connect(
           remote_url = input$remote_url,
           path = project_path,
           replace = isTRUE(input$replace_remote)
@@ -314,14 +314,14 @@ git_setup_wizard_server <- function(project_path) {
 
     shiny::observeEvent(input$check_remote_auth, {
       values$github_result <- capture_lines(
-        check_github_auth(path = project_path)
+        github_check(path = project_path)
       )
       refresh_diagnosis()
     })
 
     shiny::observeEvent(input$run_push, {
       values$github_result <- capture_lines(
-        push_first_time(path = project_path)
+        git_push(path = project_path)
       )
       refresh_diagnosis()
     })

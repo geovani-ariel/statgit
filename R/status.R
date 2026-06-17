@@ -4,7 +4,7 @@
 #'
 #' @return Invisivelmente, um data frame com o status do repositorio.
 #' @export
-git_status_pretty <- function(path = ".") {
+git_status <- function(path = ".") {
   diagnosis <- build_git_diagnosis(path)
 
   if (!diagnosis$git_installed) {

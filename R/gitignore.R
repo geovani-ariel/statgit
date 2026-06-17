@@ -7,7 +7,7 @@
 #'
 #' @return Uma lista com o caminho do arquivo e as linhas adicionadas.
 #' @export
-create_r_gitignore <- function(path = ".", include_data = NULL) {
+git_ignore <- function(path = ".", include_data = NULL) {
   project_path <- normalize_project_path(path)
   gitignore_path <- fs::path(project_path, ".gitignore")
 

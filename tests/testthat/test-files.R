@@ -1,9 +1,9 @@
-test_that("import_project_file copia arquivo para pasta do projeto", {
+test_that("file_import copia arquivo para pasta do projeto", {
   project <- withr::local_tempdir()
   source <- file.path(withr::local_tempdir(), "dados.csv")
   writeLines("x,y\n1,2", source)
 
-  result <- import_project_file(source, destination = "data/raw", path = project)
+  result <- file_import(source, destination = "data/raw", path = project)
 
   expect_true(result$ok)
   expect_false(result$moved)
@@ -13,25 +13,25 @@ test_that("import_project_file copia arquivo para pasta do projeto", {
   expect_true(file.exists(source))
 })
 
-test_that("import_project_file rejeita destino fora do projeto", {
+test_that("file_import rejeita destino fora do projeto", {
   project <- withr::local_tempdir()
   source <- file.path(withr::local_tempdir(), "dados.csv")
   writeLines("x,y\n1,2", source)
 
   expect_error(
-    import_project_file(source, destination = "../fora", path = project),
+    file_import(source, destination = "../fora", path = project),
     "destino relativa dentro do projeto"
   )
 })
 
-test_that("import_project_file pode preparar arquivo no Git", {
+test_that("file_import pode preparar arquivo no Git", {
   with_isolated_git_identity({
     project <- withr::local_tempdir()
-    init_git_project(project)
+    git_init(project)
     source <- file.path(withr::local_tempdir(), "dados.csv")
     writeLines("x,y\n1,2", source)
 
-    result <- import_project_file(
+    result <- file_import(
       source,
       destination = "data/raw",
       path = project,
@@ -43,5 +43,89 @@ test_that("import_project_file pode preparar arquivo no Git", {
     expect_true(result$git_added)
     expect_equal(result$relative_path, "data/raw/dados.csv")
     expect_true(any(status$staged))
+  })
+})
+
+test_that("file_create cria arquivo com template customizavel", {
+  project <- withr::local_tempdir()
+
+  result <- file_create(
+    filename = "analise.R",
+    type = "R",
+    destination = "scripts",
+    path = project,
+    content = "x <- 1"
+  )
+
+  created_path <- file.path(project, "scripts", "analise.R")
+
+  expect_true(result$ok)
+  expect_equal(result$relative_path, "scripts/analise.R")
+  expect_true(file.exists(created_path))
+  expect_equal(readLines(created_path, warn = FALSE), "x <- 1")
+})
+
+test_that("file_create usa template padrao quando conteudo nao e informado", {
+  project <- withr::local_tempdir()
+
+  result <- file_create(
+    filename = "relatorio.qmd",
+    type = "qmd",
+    destination = "reports",
+    path = project,
+    open_in_rstudio = FALSE
+  )
+
+  created_path <- file.path(project, "reports", "relatorio.qmd")
+  created_lines <- readLines(created_path, warn = FALSE)
+
+  expect_true(result$ok)
+  expect_equal(result$relative_path, "reports/relatorio.qmd")
+  expect_true(any(grepl('title: "Relatório"', created_lines, fixed = TRUE)))
+  expect_true(any(grepl("^format: html$", created_lines)))
+})
+
+test_that("file_delete remove arquivo dentro do projeto", {
+  project <- withr::local_tempdir()
+  dir.create(file.path(project, "scripts"), recursive = TRUE)
+  target <- file.path(project, "scripts", "velho.R")
+  writeLines("old <- TRUE", target)
+
+  result <- file_delete("scripts/velho.R", path = project)
+
+  expect_true(result$ok)
+  expect_equal(result$item_type, "file")
+  expect_false(file.exists(target))
+})
+
+test_that("file_delete protege arquivos criticos e caminhos fora do projeto", {
+  project <- withr::local_tempdir()
+  protected <- file.path(project, "meu-projeto.Rproj")
+  writeLines("Version: 1.0", protected)
+
+  protected_result <- file_delete("meu-projeto.Rproj", path = project)
+  outside_result <- file_delete("../fora.txt", path = project)
+
+  expect_false(protected_result$ok)
+  expect_equal(protected_result$reason, "protected_file")
+  expect_false(outside_result$ok)
+  expect_equal(outside_result$reason, "outside_project")
+})
+
+test_that("file_delete identifica item rastreado no Git mesmo sem mudancas pendentes", {
+  with_isolated_git_identity({
+    project <- withr::local_tempdir()
+    git_init(project)
+    dir.create(file.path(project, "scripts"), recursive = TRUE)
+    target <- file.path(project, "scripts", "analise.R")
+    writeLines("x <- 1", target)
+    gert::git_add("scripts/analise.R", repo = project)
+    gert::git_commit("Adiciona arquivo", repo = project)
+
+    result <- file_delete("scripts/analise.R", path = project)
+
+    expect_true(result$ok)
+    expect_true(result$was_tracked)
+    expect_false(file.exists(target))
   })
 })

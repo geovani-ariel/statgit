@@ -1,4 +1,4 @@
-#' Utilidades internas do pacote git4stats
+#' Utilidades internas do pacote trackR
 #'
 #' Funcoes auxiliares para diagnostico, mensagens e interacao segura com Git.
 #'
@@ -104,7 +104,7 @@ build_git_diagnosis <- function(path = ".") {
         total = 0L
       )
     ),
-    class = "git4stats_diagnosis"
+    class = "trackr_diagnosis"
   )
 
   if (git_ok) {
@@ -130,7 +130,7 @@ format_item <- function(ok, text, value = NULL) {
 
 next_step_message <- function(diagnosis) {
   if (!isTRUE(diagnosis$git_installed)) {
-    return("Instale o Git e rode check_git_setup() novamente.")
+    return("Instale o Git e rode git_check() novamente.")
   }
 
   if (!isTRUE(diagnosis$has_repo)) {

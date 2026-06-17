@@ -4,7 +4,7 @@
 #'
 #' @return Um data frame com arquivos alterados.
 #' @export
-git_changed_files <- function(path = ".") {
+git_changed <- function(path = ".") {
   repo_status_table(path)
 }
 
@@ -18,7 +18,7 @@ git_changed_files <- function(path = ".") {
 #'
 #' @return Invisivelmente, uma lista com o diff.
 #' @export
-git_diff_file <- function(file, path = ".", staged = FALSE, context = c("changes", "full")) {
+git_diff <- function(file, path = ".", staged = FALSE, context = c("changes", "full")) {
   context <- match.arg(context)
   project_path <- normalize_project_path(path)
   repo <- git_repo_root(project_path)
@@ -75,11 +75,11 @@ format_diff_for_panel <- function(diff_lines) {
 
 format_diff_for_panel_html <- function(diff_lines) {
   if (length(diff_lines) == 0) {
-    return("<div class=\"g4s-diff-empty\">Nenhuma mudanca encontrada para este arquivo.</div>")
+    return("<div class=\"tr-diff-empty\">Nenhuma mudanca encontrada para este arquivo.</div>")
   }
 
   lines <- vapply(diff_lines, diff_line_html, character(1))
-  paste0("<div class=\"g4s-diff\">", paste(lines, collapse = ""), "</div>")
+  paste0("<div class=\"tr-diff\">", paste(lines, collapse = ""), "</div>")
 }
 
 diff_line_html <- function(line) {
@@ -87,8 +87,8 @@ diff_line_html <- function(line) {
   marker <- diff_line_marker(line)
 
   paste0(
-    "<div class=\"g4s-diff-line g4s-diff-", class, "\">",
-    "<span class=\"g4s-diff-marker\">", escape_html(marker), "</span>",
+    "<div class=\"tr-diff-line tr-diff-", class, "\">",
+    "<span class=\"tr-diff-marker\">", escape_html(marker), "</span>",
     "<code>", escape_html(line), "</code>",
     "</div>"
   )

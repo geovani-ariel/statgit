@@ -1,20 +1,20 @@
-Package: git4stats
+Package: trackR
 Type: Package
-Title: Assistente de Git para Projetos de Estatistica no RStudio
+Title: Controle de Versao e Gerenciamento de Projetos para Estatistica no RStudio
 Version: 0.1.0
 Authors@R: c(
     person(
-      given = "OpenAI",
-      family = "Codex",
+      given = "Geovani Ariel Bueno",
+      family = "Paschoini",
       role = c("aut", "cre"),
-      email = "support@openai.com"
+      email = "geovaniariel08@hotmail.com"
     )
   )
-Author: OpenAI Codex [aut, cre]
-Maintainer: OpenAI Codex <support@openai.com>
-Description: Um assistente didatico para estudantes de Estatistica que
-    usam RStudio e querem aprender o fluxo basico de Git sem depender
-    inicialmente do terminal.
+Author: Geovani Ariel Bueno Paschoini [aut, cre]
+Maintainer: Geovani Ariel Bueno Paschoini <geovaniariel08@hotmail.com>
+Description: O trackR oferece controle de versao com Git, gerenciamento de
+    projetos estatisticos e ferramentas de formatacao e preview para estudantes
+    de Estatistica que usam RStudio.
 License: GPL-3
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

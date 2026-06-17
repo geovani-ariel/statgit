@@ -9,7 +9,7 @@
 #'
 #' @return Uma lista com diretorios e arquivos criados.
 #' @export
-use_stats_project <- function(
+project_organize <- function(
   path = ".",
   include_data = TRUE,
   template = c(
@@ -97,7 +97,7 @@ use_stats_project <- function(
 #'
 #' @return Uma lista com o resumo da criacao.
 #' @export
-create_stats_project <- function(
+project_create <- function(
   path,
   template = c(
     "analise_exploratoria",
@@ -116,16 +116,16 @@ create_stats_project <- function(
   project_path <- normalize_project_path(path)
   fs::dir_create(project_path, recurse = TRUE)
 
-  structure_result <- use_stats_project(
+  structure_result <- project_organize(
     path = project_path,
     include_data = include_data,
     template = template,
     extra_files = extra_files
   )
   rproj_result <- create_rstudio_project_file(project_path)
-  gitignore_result <- create_r_gitignore(project_path, include_data = include_data)
-  git_result <- if (isTRUE(initialize_git)) init_git_project(project_path) else NULL
-  open_result <- if (isTRUE(open)) open_stats_project(project_path) else NULL
+  gitignore_result <- git_ignore(project_path, include_data = include_data)
+  git_result <- if (isTRUE(initialize_git)) git_init(project_path) else NULL
+  open_result <- if (isTRUE(open)) project_open(project_path) else NULL
 
   invisible(list(
     path = project_path,

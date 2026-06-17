@@ -8,7 +8,7 @@
 #'
 #' @return Uma lista com o resultado da verificacao.
 #' @export
-check_github_auth <- function(path = ".", remote = "origin") {
+github_check <- function(path = ".", remote = "origin") {
   project_path <- normalize_project_path(path)
 
   if (!git_installed()) {
@@ -82,7 +82,7 @@ check_github_auth <- function(path = ".", remote = "origin") {
 #'
 #' @return Uma lista com o resultado da operacao.
 #' @export
-connect_github_repo <- function(remote_url, path = ".", remote = "origin", replace = FALSE) {
+github_connect <- function(remote_url, path = ".", remote = "origin", replace = FALSE) {
   project_path <- normalize_project_path(path)
 
   if (!git_installed()) {
@@ -149,7 +149,7 @@ connect_github_repo <- function(remote_url, path = ".", remote = "origin", repla
 #'
 #' @return Uma lista com o resultado da operacao.
 #' @export
-push_first_time <- function(path = ".", remote = "origin", branch = NULL) {
+git_push <- function(path = ".", remote = "origin", branch = NULL) {
   project_path <- normalize_project_path(path)
   diagnosis <- build_git_diagnosis(project_path)
 

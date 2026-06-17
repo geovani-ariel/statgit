@@ -1,6 +1,6 @@
 #' Configura nome e email global no Git
 #' @export
-setup_git_identity <- function(name, email) {
+git_set_identity <- function(name, email) {
   if (!git_installed()) return(invisible(FALSE))
   
   res_name <- run_git(c("config", "--global", "user.name", name))

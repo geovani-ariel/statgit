@@ -5,7 +5,7 @@
 #'
 #' @return Invisivelmente, uma lista com o resultado.
 #' @export
-stage_files <- function(files, path = ".") {
+git_stage <- function(files, path = ".") {
   git_file_action(files, path, action = "stage")
 }
 
@@ -16,7 +16,7 @@ stage_files <- function(files, path = ".") {
 #'
 #' @return Invisivelmente, uma lista com o resultado.
 #' @export
-unstage_files <- function(files, path = ".") {
+git_unstage <- function(files, path = ".") {
   git_file_action(files, path, action = "unstage")
 }
 
@@ -27,7 +27,7 @@ unstage_files <- function(files, path = ".") {
 #'
 #' @return Invisivelmente, uma lista com o resultado.
 #' @export
-discard_file_changes <- function(files, path = ".") {
+git_discard <- function(files, path = ".") {
   git_file_action(files, path, action = "discard")
 }
 
@@ -38,7 +38,7 @@ discard_file_changes <- function(files, path = ".") {
 #'
 #' @return Invisivelmente, uma lista com o resultado.
 #' @export
-commit_staged_files <- function(message = "Atualiza projeto", path = ".") {
+git_commit <- function(message = "Atualiza projeto", path = ".") {
   project_path <- normalize_project_path(path)
   repo <- git_repo_root(project_path)
 

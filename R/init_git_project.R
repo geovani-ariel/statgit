@@ -7,7 +7,7 @@
 #'
 #' @return Uma lista com o resultado da inicializacao.
 #' @export
-init_git_project <- function(path = ".", branch = "main") {
+git_init <- function(path = ".", branch = "main") {
   project_path <- normalize_project_path(path)
 
   if (!git_installed()) {
@@ -32,7 +32,7 @@ init_git_project <- function(path = ".", branch = "main") {
   cli::cli_alert_success(glue::glue("Branch principal configurada como {branch}."))
   cli::cli_inform(c(
     "Agora voc\u00ea pode criar seu primeiro commit com:",
-    glue::glue('  first_commit(path = "{project_path}")')
+    glue::glue('  git_commit_all(path = "{project_path}")')
   ))
 
   invisible(list(ok = TRUE, created = TRUE, branch = branch, path = project_path))

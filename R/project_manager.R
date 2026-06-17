@@ -5,7 +5,7 @@
 #'
 #' @return Um data frame com nome, pasta e arquivo `.Rproj`.
 #' @export
-find_rstudio_projects <- function(path = ".", recursive = TRUE) {
+project_find <- function(path = ".", recursive = TRUE) {
   search_path <- normalize_project_path(path)
 
   if (!fs::dir_exists(search_path)) {
@@ -35,7 +35,7 @@ find_rstudio_projects <- function(path = ".", recursive = TRUE) {
 #'
 #' @return Uma lista com o resultado da operacao.
 #' @export
-open_stats_project <- function(path) {
+project_open <- function(path) {
   project_file <- resolve_rstudio_project_file(path)
 
   if (!rstudio_available()) {
@@ -58,7 +58,7 @@ project_manager_addin <- function() {
   ensure_suggested_package("miniUI", "o gerenciador de projetos")
 
   ui <- miniUI::miniPage(
-    miniUI::gadgetTitleBar("git4stats: gerenciar projetos"),
+    miniUI::gadgetTitleBar("trackR: gerenciar projetos"),
     miniUI::miniContentPanel(
       shiny::fillCol(
         flex = c(1, 1),
@@ -134,7 +134,7 @@ project_manager_addin <- function() {
       extra_files <- split_extra_file_lines(input$extra_files)
 
       values$create_result <- capture_lines(
-        create_stats_project(
+        project_create(
           path = target_path,
           template = input$template,
           include_data = isTRUE(input$include_data),
@@ -155,7 +155,7 @@ project_manager_addin <- function() {
         return()
       }
 
-      values$open_result <- capture_lines(open_stats_project(selected))
+      values$open_result <- capture_lines(project_open(selected))
       shiny::stopApp(selected)
     })
 
@@ -171,7 +171,7 @@ project_manager_addin <- function() {
     output$open_result <- shiny::renderText(values$open_result)
   }
 
-  shiny::runGadget(ui, server = server, viewer = shiny::dialogViewer("git4stats"))
+  shiny::runGadget(ui, server = server, viewer = shiny::dialogViewer("trackR"))
   invisible(NULL)
 }
 
@@ -211,7 +211,7 @@ default_projects_directory <- function() {
 
 named_project_choices <- function(root) {
   projects <- tryCatch(
-    find_rstudio_projects(root),
+    project_find(root),
     error = function(e) data.frame(
       name = character(),
       project_dir = character(),

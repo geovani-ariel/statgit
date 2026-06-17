@@ -9,11 +9,11 @@
 #'
 #' @return Invisivelmente, uma lista com os caminhos de entrada e saida.
 #' @export
-preview_knit <- function(path = NULL, style = FALSE) {
+report_preview <- function(path = NULL, style = FALSE) {
   input_path <- resolve_preview_document_path(path)
 
   if (isTRUE(style)) {
-    format_active_file(input_path)
+    code_format(input_path)
   }
 
   output_path <- render_preview_document(input_path)
@@ -41,7 +41,7 @@ preview_knit <- function(path = NULL, style = FALSE) {
 #'
 #' @return Invisivelmente, um resumo da pre-visualizacao iniciada.
 #' @export
-live_preview_knit <- function(path = NULL, style = FALSE, interval_ms = 1500) {
+report_live_preview <- function(path = NULL, style = FALSE, interval_ms = 1500) {
   input_path <- resolve_preview_document_path(path)
   extension <- tolower(fs::path_ext(input_path))
 
@@ -213,7 +213,7 @@ quarto_command <- function() {
 }
 
 preview_output_dir <- function() {
-  output_dir <- fs::path_temp("git4stats-preview")
+  output_dir <- fs::path_temp("trackr-preview")
   fs::dir_create(output_dir)
   output_dir
 }
@@ -285,7 +285,7 @@ start_rmarkdown_live_preview <- function(path, style = FALSE, interval_ms = 1500
   initial_output <- render_live_preview_document(path, output_dir, style = style)
 
   ui <- miniUI::miniPage(
-    miniUI::gadgetTitleBar("git4stats: live preview"),
+    miniUI::gadgetTitleBar("trackR: live preview"),
     miniUI::miniContentPanel(
       shiny::fillCol(
         flex = c(0, 1),
@@ -375,7 +375,7 @@ start_rmarkdown_live_preview <- function(path, style = FALSE, interval_ms = 1500
   result <- shiny::runGadget(
     ui,
     server = server,
-    viewer = shiny::dialogViewer("git4stats")
+    viewer = shiny::dialogViewer("trackR")
   )
 
   invisible(result %||% list(
@@ -388,7 +388,7 @@ start_rmarkdown_live_preview <- function(path, style = FALSE, interval_ms = 1500
 
 render_live_preview_document <- function(path, output_dir, style = FALSE) {
   if (isTRUE(style)) {
-    format_active_file(path)
+    code_format(path)
   }
 
   render_rmarkdown_preview(path, output_dir = output_dir)
@@ -396,7 +396,7 @@ render_live_preview_document <- function(path, output_dir, style = FALSE) {
 
 live_preview_resource_prefix <- function() {
   paste0(
-    "git4stats-preview-",
+    "trackr-preview-",
     format(as.integer(stats::runif(1, min = 1, max = .Machine$integer.max)), scientific = FALSE)
   )
 }

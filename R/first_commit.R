@@ -7,7 +7,7 @@
 #'
 #' @return Uma lista com o resultado da operacao.
 #' @export
-first_commit <- function(message = "Primeiro commit", path = ".") {
+git_commit_all <- function(message = "Primeiro commit", path = ".") {
   project_path <- normalize_project_path(path)
 
   if (!git_installed()) {
@@ -17,7 +17,7 @@ first_commit <- function(message = "Primeiro commit", path = ".") {
 
   if (!is_git_repo(project_path)) {
     cli::cli_alert_danger("Este projeto ainda n\u00e3o usa Git.")
-    cli::cli_inform("Rode init_git_project() primeiro.")
+    cli::cli_inform("Rode git_init() primeiro.")
     return(invisible(list(ok = FALSE, reason = "repo_missing")))
   }
 

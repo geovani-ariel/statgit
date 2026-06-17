@@ -4,7 +4,7 @@
 #'
 #' @return Invisivelmente, uma lista com o resultado da formatacao.
 #' @export
-format_active_file <- function(path = NULL) {
+code_format <- function(path = NULL) {
   ensure_suggested_package("styler", "o formatador de codigo")
 
   target_path <- resolve_style_document_path(path)
@@ -35,7 +35,7 @@ format_active_file <- function(path = NULL) {
 #'
 #' @return Invisivelmente, uma lista com os arquivos formatados.
 #' @export
-format_project_files <- function(path = ".") {
+code_format_all <- function(path = ".") {
   ensure_suggested_package("styler", "o formatador de codigo")
 
   project_path <- normalize_project_path(path)
@@ -181,7 +181,7 @@ refresh_source_document_from_disk <- function(path, id) {
 run_styler_file <- function(path) {
   before <- readLines(path, warn = FALSE, encoding = "UTF-8")
   warnings <- character()
-  cache_dir <- fs::path_temp("git4stats-styler-cache")
+  cache_dir <- fs::path_temp("trackr-styler-cache")
   fs::dir_create(cache_dir)
   old_cache_dir <- Sys.getenv("R_USER_CACHE_DIR", unset = NA_character_)
   Sys.setenv(R_USER_CACHE_DIR = cache_dir)

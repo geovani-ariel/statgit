@@ -7,14 +7,14 @@
 #'
 #' @return Uma lista com o diagnostico e impressao amigavel no console.
 #' @export
-check_git_setup <- function(path = ".") {
+git_check <- function(path = ".") {
   diagnosis <- build_git_diagnosis(path)
   print(diagnosis)
   invisible(diagnosis)
 }
 
 #' @export
-print.git4stats_diagnosis <- function(x, ...) {
+print.trackr_diagnosis <- function(x, ...) {
   print_git_setup(x)
   invisible(x)
 }
