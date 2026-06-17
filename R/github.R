@@ -18,14 +18,14 @@ check_github_auth <- function(path = ".", remote = "origin") {
 
   if (!is_git_repo(project_path)) {
     cli::cli_alert_danger("Esta pasta ainda n\u00e3o usa Git.")
-    cli::cli_inform("Use init_git_project() primeiro.")
+    cli::cli_inform("Vá na aba 'Git e GitHub' e clique em 'Inicializar Git'.")
     return(invisible(list(ok = FALSE, reason = "repo_missing", path = project_path)))
   }
 
   remote_info <- remote_by_name(project_path, remote = remote)
   if (is.null(remote_info)) {
     cli::cli_alert_warning(glue::glue("Nenhum remote chamado '{remote}' foi encontrado."))
-    cli::cli_inform("Use connect_github_repo() para configurar o link com o GitHub.")
+    cli::cli_inform("Vá na aba 'Git e GitHub' e conecte a URL do repositório.")
     return(invisible(list(ok = FALSE, reason = "remote_missing", remote = remote)))
   }
 
@@ -45,7 +45,7 @@ check_github_auth <- function(path = ".", remote = "origin") {
 
   if (result$status == 0L) {
     cli::cli_alert_success("Conex\u00e3o com o GitHub validada para este remote.")
-    cli::cli_inform("Se voc\u00ea j\u00e1 tiver commits locais, agora pode usar push_first_time().")
+    cli::cli_inform("Se você já tiver commits locais, clique em 'Enviar Histórico (Push)'.")
     return(invisible(list(
       ok = TRUE,
       remote = remote,
@@ -92,7 +92,7 @@ connect_github_repo <- function(remote_url, path = ".", remote = "origin", repla
 
   if (!is_git_repo(project_path)) {
     cli::cli_alert_danger("Esta pasta ainda n\u00e3o usa Git.")
-    cli::cli_inform("Use init_git_project() primeiro.")
+    cli::cli_inform("Vá na aba 'Git e GitHub' e clique em 'Inicializar Git'.")
     return(invisible(list(ok = FALSE, reason = "repo_missing", path = project_path)))
   }
 
@@ -128,7 +128,7 @@ connect_github_repo <- function(remote_url, path = ".", remote = "origin", repla
   cli::cli_alert_success(glue::glue("Remote '{remote}' configurado para o GitHub."))
   cli::cli_inform(c(
     remote_url,
-    "Pr\u00f3ximo passo: rode check_github_auth() e depois push_first_time()."
+    "Próximo passo: clique no botão 'Verificar permissões de Acesso' e depois em 'Enviar Histórico (Push)'."
   ))
 
   invisible(list(
@@ -160,20 +160,20 @@ push_first_time <- function(path = ".", remote = "origin", branch = NULL) {
 
   if (!diagnosis$has_repo) {
     cli::cli_alert_danger("Esta pasta ainda n\u00e3o usa Git.")
-    cli::cli_inform("Use init_git_project() primeiro.")
+    cli::cli_inform("Vá na aba 'Git e GitHub' e clique em 'Inicializar Git'.")
     return(invisible(list(ok = FALSE, reason = "repo_missing", path = project_path)))
   }
 
   if (!diagnosis$has_commits) {
     cli::cli_alert_warning("Ainda n\u00e3o existe nenhum commit para enviar.")
-    cli::cli_inform("Use first_commit() antes de tentar enviar para o GitHub.")
+    cli::cli_inform("Use a aba 'Controle Fino (Diffs)' para salvar sua primeira versão antes de enviar.")
     return(invisible(list(ok = FALSE, reason = "no_commits", path = project_path)))
   }
 
   remote_info <- remote_by_name(project_path, remote = remote)
   if (is.null(remote_info)) {
     cli::cli_alert_warning(glue::glue("Nenhum remote chamado '{remote}' foi encontrado."))
-    cli::cli_inform("Use connect_github_repo() primeiro.")
+    cli::cli_inform("Vá na aba 'Git e GitHub' e conecte a URL do repositório primeiro.")
     return(invisible(list(ok = FALSE, reason = "remote_missing", remote = remote)))
   }
 

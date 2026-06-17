@@ -81,6 +81,32 @@ choose_project_file <- function() {
   )
 }
 
+choose_directory <- function() {
+  if (!rstudio_available()) {
+    return(NULL)
+  }
+
+  tryCatch(
+    rstudioapi::selectDirectory(caption = "Escolha uma pasta"),
+    error = function(e) NULL
+  )
+}
+
+choose_rproj_file <- function() {
+  if (!rstudio_available()) {
+    return(NULL)
+  }
+
+  tryCatch(
+    rstudioapi::selectFile(
+      caption = "Escolha um projeto (.Rproj)",
+      filter = "R Project files (*.Rproj)",
+      existing = TRUE
+    ),
+    error = function(e) NULL
+  )
+}
+
 normalize_project_destination <- function(destination) {
   destination <- trimws(destination %||% "")
   if (!nzchar(destination)) {
@@ -119,4 +145,71 @@ normalize_existing_path <- function(path) {
   }
 
   path
+}
+
+#' Encontra os arquivos de dados e scripts mais recentes na pasta Downloads
+#'
+#' @return Um vetor de caminhos de arquivos.
+#' @export
+find_recent_downloads <- function() {
+  downloads_dir <- path.expand("~/Downloads")
+  if (!fs::dir_exists(downloads_dir)) {
+    return(character())
+  }
+  
+  # List files inside downloads
+  files <- tryCatch(fs::dir_info(downloads_dir), error = function(e) NULL)
+  if (is.null(files) || nrow(files) == 0) {
+    return(character())
+  }
+  
+  # Filter: keep only files (not directories), ignore hidden files, keep only specific extensions
+  valid_exts <- c("csv", "xlsx", "rds", "r", "qmd", "rmd", "txt", "tsv")
+  
+  files <- files[files$type == "file", ]
+  files <- files[!startsWith(basename(files$path), "."), ]
+  files$ext <- tolower(fs::path_ext(files$path))
+  files <- files[files$ext %in% valid_exts, ]
+  
+  if (nrow(files) == 0) {
+    return(character())
+  }
+  
+  # Sort by modification_time (newest first)
+  files <- files[order(files$modification_time, decreasing = TRUE), ]
+  
+  head(as.character(files$path), 5)
+}
+
+#' Renomeia um arquivo ou pasta no projeto
+#' @export
+rename_project_item <- function(source, target, path = ".") {
+  project_path <- normalize_project_path(path)
+  source_path <- fs::path(project_path, source)
+  target_path <- fs::path(project_path, target)
+  
+  if (!fs::file_exists(source_path) && !fs::dir_exists(source_path)) {
+    cli::cli_alert_danger(glue::glue("Origem '{source}' não encontrada."))
+    return(invisible(list(ok = FALSE, output = glue::glue("Item não encontrado: {source}"))))
+  }
+  
+  if (fs::file_exists(target_path) || fs::dir_exists(target_path)) {
+    cli::cli_alert_danger(glue::glue("O destino '{target}' já existe."))
+    return(invisible(list(ok = FALSE, output = glue::glue("Destino já existe: {target}"))))
+  }
+  
+  tryCatch({
+    target_dir <- fs::path_dir(target_path)
+    if (!fs::dir_exists(target_dir)) {
+      fs::dir_create(target_dir, recurse = TRUE)
+    }
+    
+    fs::file_move(source_path, target_path)
+    cli::cli_alert_success(glue::glue("Item renomeado para '{target}'."))
+    
+    invisible(list(ok = TRUE, output = glue::glue("Renomeado: {source} -> {target}")))
+  }, error = function(e) {
+    cli::cli_alert_danger("Erro ao renomear item.")
+    invisible(list(ok = FALSE, output = conditionMessage(e)))
+  })
 }

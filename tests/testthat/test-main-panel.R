@@ -202,10 +202,8 @@ test_that("painel prepara, desprepara, descarta e commita selecionados", {
     expect_equal(calls$stage$files, c("analise.R", "dados.csv"))
     expect_equal(calls$unstage$files, c("analise.R", "dados.csv"))
     expect_null(calls$discard)
-    expect_match(values$log, "confirmacao")
 
-    session$setInputs(changes_confirm_discard = TRUE)
-    session$setInputs(changes_discard = 2)
+    session$setInputs(confirm_discard_action = 1)
     session$setInputs(changes_commit_message = "Salva analise")
     session$setInputs(changes_commit_selected = 1)
 

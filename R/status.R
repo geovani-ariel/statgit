@@ -14,7 +14,7 @@ git_status_pretty <- function(path = ".") {
 
   if (!diagnosis$has_repo) {
     cli::cli_alert_warning("Esta pasta ainda n\u00e3o usa Git.")
-    cli::cli_inform("Use init_git_project() para come\u00e7ar.")
+    cli::cli_inform("Vá na aba 'Git e GitHub' e clique em 'Inicializar Git'.")
     return(invisible(empty_status_table()))
   }
 
