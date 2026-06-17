@@ -294,6 +294,9 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
 
 
     output$recent_files_explorer <- shiny::renderUI({
+      shiny::req(project_path, nzchar(project_path))
+      shiny::req(d())
+      shiny::invalidateLater(2000)
       shiny::HTML(render_project_files_explorer_html(project_path, d(), input$selected_project_item %||% ""))
     })
 
@@ -2139,8 +2142,8 @@ trackR_panel_css <- function() {
     background: #262626;
   }
   .tr-pill.ok {
-    border-color: #10B981;
-    background: rgba(16, 185, 129, 0.15);
+    border-color: #34D399;
+    background: rgba(52, 211, 153, 0.15);
   }
   .tr-pill.warn {
     border-color: #B45309;
@@ -2150,7 +2153,7 @@ trackR_panel_css <- function() {
     border-color: #991B1B;
     background: rgba(220, 38, 38, 0.15);
   }
-  .tr-pill.ok .tr-pill-value { color: #6EE7B7; }
+  .tr-pill.ok .tr-pill-value { color: #A7F3D0; }
   .tr-pill.warn .tr-pill-value { color: #FCD34D; }
   .tr-pill.error .tr-pill-value { color: #FCA5A5; }
   
