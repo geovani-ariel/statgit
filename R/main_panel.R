@@ -971,7 +971,7 @@ git_module_ui <- function(diagnosis) {
           style = "display: flex; flex-direction: column; gap: 16px;",
           shiny::div(
             class = "tr-git-subsection",
-            git_step_title("1", "Identidade", complete = isTRUE(diagnosis$identity$complete)),
+            git_step_title("1", "Identidade", complete = isTRUE(diagnosis$identity$complete), description = "Seu nome aparecerá no histórico de versões"),
             if (isTRUE(diagnosis$identity$complete)) {
               shiny::div(
                 class = "tr-git-success-note",
@@ -985,7 +985,7 @@ git_module_ui <- function(diagnosis) {
           ),
           shiny::div(
             class = "tr-git-subsection",
-            git_step_title("2", "Git local", complete = diagnosis$has_repo, blocked = !diagnosis$git_installed),
+            git_step_title("2", "Git local", complete = diagnosis$has_repo, blocked = !diagnosis$git_installed, description = "Inicialize Git para criar versões do seu projeto"),
             if (diagnosis$has_repo) {
               shiny::div(
                 class = "tr-git-success-note",
@@ -1010,7 +1010,8 @@ git_module_ui <- function(diagnosis) {
               "3",
               "Salvar versão local",
               complete = diagnosis$has_commits,
-              blocked = !diagnosis$has_repo || !isTRUE(diagnosis$identity$complete)
+              blocked = !diagnosis$has_repo || !isTRUE(diagnosis$identity$complete),
+              description = "Crie um 'ponto de salvamento' do seu projeto"
             ),
             shiny::textInput("commit_message", "Mensagem do commit", value = "Primeiro commit"),
             panel_action_button(
@@ -1025,7 +1026,7 @@ git_module_ui <- function(diagnosis) {
           ),
           shiny::div(
             class = "tr-git-subsection",
-            git_step_title("4", "Conectar GitHub", complete = diagnosis$has_remote, blocked = !diagnosis$has_repo),
+            git_step_title("4", "Conectar GitHub", complete = diagnosis$has_remote, blocked = !diagnosis$has_repo, description = "Crie um backup das versões na nuvem (opcional no início)"),
             if (!diagnosis$has_repo) {
               git_notice_ui("Ative o Git local antes de conectar um repositório remoto.")
             },
@@ -1049,7 +1050,8 @@ git_module_ui <- function(diagnosis) {
               "5",
               "Enviar",
               complete = diagnosis$has_remote && diagnosis$has_commits,
-              blocked = !diagnosis$has_remote || !diagnosis$has_commits || is.null(diagnosis$branch)
+              blocked = !diagnosis$has_remote || !diagnosis$has_commits || is.null(diagnosis$branch),
+              description = "Compartilhe as versões com colegas e professores"
             ),
             shiny::div(
               class = "tr-git-action-row",
@@ -1066,9 +1068,9 @@ git_module_ui <- function(diagnosis) {
                 class = "btn-default"
               )
             ),
-            disabled_reason_ui(!diagnosis$has_remote, "Conecte um remote antes de enviar commits."),
-            disabled_reason_ui(diagnosis$has_remote && !diagnosis$has_commits, "Crie pelo menos um commit antes de enviar."),
-            disabled_reason_ui(diagnosis$has_remote && diagnosis$has_commits && is.null(diagnosis$branch), "Não foi possível identificar a branch atual.")
+            disabled_reason_ui(!diagnosis$has_remote, "Conecte um repositório GitHub antes de enviar."),
+            disabled_reason_ui(diagnosis$has_remote && !diagnosis$has_commits, "Crie pelo menos uma versão (commit) antes de enviar."),
+            disabled_reason_ui(diagnosis$has_remote && diagnosis$has_commits && is.null(diagnosis$branch), "Não foi possível identificar a versão de trabalho atual.")
           )
         )
       )
@@ -1129,7 +1131,7 @@ git_notice_ui <- function(text) {
   shiny::div(class = "tr-git-notice", text)
 }
 
-git_step_title <- function(number, title, complete = FALSE, blocked = FALSE) {
+git_step_title <- function(number, title, complete = FALSE, blocked = FALSE, description = NULL) {
   state_class <- if (isTRUE(complete)) {
     "complete"
   } else if (isTRUE(blocked)) {
@@ -1145,10 +1147,18 @@ git_step_title <- function(number, title, complete = FALSE, blocked = FALSE) {
     number
   }
 
-  shiny::div(
-    class = paste("tr-git-step-title", state_class),
-    shiny::span(class = "tr-git-step-number", badge),
-    shiny::span(title)
+  shiny::tagList(
+    shiny::div(
+      class = paste("tr-git-step-title", state_class),
+      shiny::span(class = "tr-git-step-number", badge),
+      shiny::span(title)
+    ),
+    if (!is.null(description) && nzchar(description)) {
+      shiny::div(
+        class = "tr-step-description",
+        description
+      )
+    }
   )
 }
 
@@ -2164,6 +2174,14 @@ trackR_panel_css <- function() {
     font-size: 12px;
     font-weight: 700;
     flex: 0 0 auto;
+  }
+  .tr-step-description {
+    font-size: 11px;
+    color: #71717A;
+    margin-top: 6px;
+    margin-left: 0;
+    line-height: 1.4;
+    font-weight: 400;
   }
   .tr-git-step-title.complete .tr-git-step-number {
     background: #064E3B;
