@@ -1,0 +1,49 @@
+Name: git4stats
+Description: Abre o painel principal para gerenciar projeto, Git, relatorios e formatacao.
+Binding: addin_git4stats
+Interactive: true
+
+Name: Verificar Git do projeto
+Description: Mostra um diagnóstico simples do Git no projeto atual.
+Binding: addin_check_git
+Interactive: false
+
+Name: Configurar Git neste projeto
+Description: Abre um assistente para configurar Git em um projeto RStudio.
+Binding: addin_git_setup_wizard
+Interactive: true
+
+Name: Fazer primeiro commit
+Description: Cria o primeiro commit do projeto de forma guiada.
+Binding: addin_first_commit
+Interactive: true
+
+Name: Ver status Git
+Description: Mostra o estado atual dos arquivos do projeto em linguagem simples.
+Binding: addin_git_status
+Interactive: false
+
+Name: Pre-visualizar knit
+Description: Gera uma pre-visualizacao HTML do relatorio ativo.
+Binding: addin_knit_preview
+Interactive: false
+
+Name: Live preview knit
+Description: Atualiza a pre-visualizacao automaticamente quando o arquivo salvo mudar.
+Binding: addin_live_preview
+Interactive: true
+
+Name: Formatar arquivo atual
+Description: Formata o arquivo ativo com styler.
+Binding: addin_format_active_file
+Interactive: false
+
+Name: Formatar projeto atual
+Description: Formata os arquivos suportados do projeto atual com styler.
+Binding: addin_format_project
+Interactive: false
+
+Name: Gerenciar projetos estatisticos
+Description: Cria projetos organizados por template e abre rapidamente arquivos .Rproj.
+Binding: addin_project_manager
+Interactive: true

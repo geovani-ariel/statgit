@@ -1,0 +1,37 @@
+Package: git4stats
+Type: Package
+Title: Assistente de Git para Projetos de Estatistica no RStudio
+Version: 0.1.0
+Authors@R: c(
+    person(
+      given = "OpenAI",
+      family = "Codex",
+      role = c("aut", "cre"),
+      email = "support@openai.com"
+    )
+  )
+Author: OpenAI Codex [aut, cre]
+Maintainer: OpenAI Codex <support@openai.com>
+Description: Um assistente didatico para estudantes de Estatistica que
+    usam RStudio e querem aprender o fluxo basico de Git sem depender
+    inicialmente do terminal.
+License: GPL-3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Depends:
+    R (>= 4.1.0)
+Imports:
+    cli,
+    fs,
+    gert,
+    glue,
+    rstudioapi
+Suggests:
+    miniUI,
+    rmarkdown,
+    shiny,
+    styler,
+    testthat (>= 3.0.0),
+    withr
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.0.0
