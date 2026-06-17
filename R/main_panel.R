@@ -1826,6 +1826,17 @@ trackR_panel_css <- function() {
   "
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
+  /* Design tokens for consistency */
+  :root {
+    --gap-xs: 8px;
+    --gap-sm: 12px;
+    --gap-md: 16px;
+    --gap-lg: 24px;
+    --gap-xl: 32px;
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.2s ease;
+  }
+
   /* Antigravity / Codex Aesthetic Base (Dark Mode) */
   body {
     background-color: #0D0D0D;
@@ -1844,7 +1855,7 @@ trackR_panel_css <- function() {
   /* Layout Panels */
   .tr-sidebar {
     background: #0D0D0D;
-    padding: 9px 10px 9px 4px;
+    padding: var(--gap-sm) var(--gap-sm) var(--gap-sm) 4px;
     border-bottom: 1px solid #2D2D2D;
     flex-shrink: 0;
     overflow-x: auto;
@@ -1852,14 +1863,14 @@ trackR_panel_css <- function() {
   .tr-sidebar .shiny-options-group {
     display: flex;
     flex-wrap: nowrap;
-    gap: 3px;
+    gap: var(--gap-xs);
     align-items: center;
     width: max-content;
   }
-  
+
   .tr-main {
     background: #161616;
-    padding: 20px 24px;
+    padding: var(--gap-lg) var(--gap-lg);
     overflow-y: auto;
     flex-grow: 1;
   }
@@ -1976,9 +1987,9 @@ trackR_panel_css <- function() {
   .tr-checkbox-group {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    margin-top: 16px;
-    margin-bottom: 16px;
+    gap: var(--gap-md);
+    margin-top: var(--gap-md);
+    margin-bottom: var(--gap-md);
   }
   .tr-checkbox-group .shiny-input-container {
     margin: 0 !important;
@@ -2031,13 +2042,13 @@ trackR_panel_css <- function() {
   .tr-nav-item {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--gap-xs);
     padding: 7px 9px;
     border-radius: 6px;
     font-weight: 500;
     color: #A1A1AA;
     font-size: 13px;
-    transition: all 0.15s ease;
+    transition: all var(--transition-fast);
     white-space: nowrap;
   }
   .tr-nav-item i {
@@ -2069,12 +2080,12 @@ trackR_panel_css <- function() {
   /* Sticky Header */
   .tr-summary {
     border-bottom: 1px solid #2D2D2D;
-    padding-bottom: 16px;
-    margin-bottom: 24px;
+    padding-bottom: var(--gap-md);
+    margin-bottom: var(--gap-lg);
     background: rgba(22, 22, 22, 0.98);
     backdrop-filter: blur(8px);
     position: sticky;
-    top: -24px;
+    top: calc(var(--gap-lg) * -1);
     z-index: 10;
   }
   .tr-summary-main {
@@ -2097,7 +2108,7 @@ trackR_panel_css <- function() {
   .tr-summary-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: var(--gap-sm);
     margin-top: 0;
     justify-content: flex-end;
   }
@@ -2108,12 +2119,12 @@ trackR_panel_css <- function() {
     background: #1C1C1C;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--gap-xs);
     box-shadow: 0 1px 2px rgba(0,0,0,0.3);
   }
   .tr-pill.interactive {
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all var(--transition-fast);
   }
   .tr-pill.interactive:hover {
     transform: translateX(2px);
@@ -2151,8 +2162,8 @@ trackR_panel_css <- function() {
   .tr-section {
     border: 1px solid #2D2D2D;
     border-radius: 8px;
-    padding: 24px;
-    margin-bottom: 24px;
+    padding: var(--gap-lg);
+    margin-bottom: var(--gap-lg);
     background: #1C1C1C;
     box-shadow: 0 1px 2px rgba(0,0,0,0.5);
   }
@@ -2160,11 +2171,11 @@ trackR_panel_css <- function() {
     font-size: 16px;
     font-weight: 600;
     color: #EDEDED;
-    margin: 0 0 16px 0;
+    margin: 0 0 var(--gap-md) 0;
     letter-spacing: -0.01em;
   }
   .tr-section .form-group {
-    margin-bottom: 16px;
+    margin-bottom: var(--gap-md);
   }
   .tr-git-current-remote code {
     color: #EDEDED;
@@ -2177,14 +2188,14 @@ trackR_panel_css <- function() {
   .tr-git-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 18px;
+    gap: var(--gap-lg);
     align-items: start;
   }
   .tr-git-subsection {
     border: 1px solid #2D2D2D;
     border-radius: 8px;
     background: #161616;
-    padding: 16px;
+    padding: var(--gap-md);
   }
   .tr-git-subtitle {
     margin: 0 0 12px 0;
@@ -2302,7 +2313,7 @@ trackR_panel_css <- function() {
     overflow: hidden;
   }
   .tr-log-summary {
-    padding: 12px 16px;
+    padding: var(--gap-sm) var(--gap-md);
     background: #1C1C1C;
     cursor: pointer;
     font-size: 13px;
@@ -2312,7 +2323,7 @@ trackR_panel_css <- function() {
     justify-content: space-between;
     align-items: center;
     user-select: none;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition: background var(--transition-fast), color var(--transition-fast);
   }
   .tr-log-summary:hover {
     background: #262626;
@@ -2516,6 +2527,7 @@ trackR_panel_css <- function() {
     text-align: left;
     white-space: pre;
     cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
   }
   .tr-tree-item:hover {
     background: #1C1C1E;
