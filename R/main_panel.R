@@ -2623,7 +2623,7 @@ trackR_panel_css <- function() {
   .tr-timeline {
     position: relative;
     padding-left: 16px;
-    border-left: 2px solid #9333EA;
+    border-left: 2px solid #3B82F6;
     margin-bottom: 24px;
   }
   .tr-timeline-item {
@@ -2641,22 +2641,22 @@ trackR_panel_css <- function() {
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: #9333EA;
-    border: 2px solid #9333EA;
+    background: #3B82F6;
+    border: 2px solid #3B82F6;
     z-index: 1;
-    box-shadow: 0 0 8px rgba(147, 51, 234, 0.6);
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
   }
   .tr-timeline-content {
-    background: #2E1065;
-    border: 1px solid #6B21A8;
+    background: #1E3A8A;
+    border: 1px solid #3B82F6;
     border-radius: 6px;
     padding: 16px;
     transition: all 0.15s ease;
   }
   .tr-timeline-content:hover {
-    background: #3F1A7C;
-    border-color: #9333EA;
-    box-shadow: 0 2px 8px rgba(147, 51, 234, 0.2);
+    background: #1E40AF;
+    border-color: #60A5FA;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
   }
   .tr-timeline-header {
     display: flex;
@@ -2684,8 +2684,8 @@ trackR_panel_css <- function() {
   .tr-timeline-hash {
     font-family: Menlo, Monaco, Consolas, monospace;
     font-size: 11px;
-    color: #D8B4FE;
-    background: rgba(147, 51, 234, 0.2);
+    color: #BFDBFE;
+    background: rgba(59, 130, 246, 0.2);
     padding: 3px 6px;
     border-radius: 4px;
     display: inline-block;
