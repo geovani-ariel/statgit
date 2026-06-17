@@ -2132,16 +2132,18 @@ file_actions_panel_ui <- function(path, diagnosis, selected = "") {
       }
     ),
 
-    if (!is_dir_val) shiny::div(
-      class = "tr-actions-group",
-      shiny::div(class = "tr-actions-group-title", "Ações"),
-      if (is_formattable) {
-        shiny::actionButton("act_format", shiny::tagList(shiny::icon("wand-magic-sparkles"), " Formatar código"), class = "btn-default", style = "width:100%; justify-content:flex-start; margin-bottom:8px;")
-      },
-      if (diagnosis$has_repo && has_changes) {
-        shiny::actionButton("act_diff", shiny::tagList(shiny::icon("code-compare"), " Ver mudanças (diff)"), class = "btn-default", style = "width:100%; justify-content:flex-start; margin-bottom:8px;")
-      }
-    ),
+    if (!is_dir_val) {
+      shiny::div(
+        class = "tr-actions-group",
+        shiny::div(class = "tr-actions-group-title", "Ações"),
+        if (is_formattable) {
+          shiny::actionButton("act_format", shiny::tagList(shiny::icon("wand-magic-sparkles"), " Formatar código"), class = "btn-default", style = "width:100%; justify-content:flex-start; margin-bottom:8px;")
+        },
+        if (diagnosis$has_repo && has_changes) {
+          shiny::actionButton("act_diff", shiny::tagList(shiny::icon("code-compare"), " Ver mudanças (diff)"), class = "btn-default", style = "width:100%; justify-content:flex-start; margin-bottom:8px;")
+        }
+      )
+    },
 
     shiny::div(
       class = "tr-actions-group",
@@ -2150,12 +2152,14 @@ file_actions_panel_ui <- function(path, diagnosis, selected = "") {
       shiny::actionButton("act_rename", shiny::tagList(shiny::icon("pen"), " Renomear / mover"), class = "btn-default", style = "width:100%; justify-content:flex-start;")
     ),
 
-    if (diagnosis$has_repo && has_changes) shiny::div(
-      class = "tr-actions-group",
-      shiny::div(class = "tr-actions-group-title", "Salvar versão (commit)"),
-      shiny::textInput("act_commit_message", label = NULL, value = "", placeholder = "O que você mudou neste arquivo?", width = "100%"),
-      shiny::actionButton("act_commit", shiny::tagList(shiny::icon("floppy-disk"), " Commit deste arquivo"), class = "btn-primary", style = "width:100%; justify-content:flex-start;")
-    ),
+    if (diagnosis$has_repo && has_changes) {
+      shiny::div(
+        class = "tr-actions-group",
+        shiny::div(class = "tr-actions-group-title", "Salvar versão (commit)"),
+        shiny::textInput("act_commit_message", label = NULL, value = "", placeholder = "O que você mudou neste arquivo?", width = "100%"),
+        shiny::actionButton("act_commit", shiny::tagList(shiny::icon("floppy-disk"), " Commit deste arquivo"), class = "btn-primary", style = "width:100%; justify-content:flex-start;")
+      )
+    },
 
     shiny::div(
       class = "tr-actions-group tr-actions-danger",
