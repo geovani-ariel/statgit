@@ -1094,8 +1094,12 @@ organize_modal_ui <- function() {
   shiny::modalDialog(
     title = "Organizar estrutura do projeto",
     easyClose = TRUE,
-    organize_module_ui(),
-    footer = shiny::modalButton("Fechar")
+    shiny::div(
+      class = "tr-organize-modal-content",
+      organize_module_ui()
+    ),
+    footer = shiny::modalButton("Fechar"),
+    size = "l"
   )
 }
 
@@ -3101,7 +3105,18 @@ trackR_panel_css <- function() {
   .tr-tree-indent {
     white-space: pre;
   }
-  
+
+  /* Organize Modal */
+  .tr-organize-modal-content .tr-project-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .tr-organize-modal-content .tr-tree-card {
+    max-height: 350px;
+    min-height: 250px;
+  }
+
   /* Recent Projects */
   .tr-recent-projects-grid {
     background: #0D0D0D;
