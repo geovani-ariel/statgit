@@ -1595,15 +1595,90 @@ panel_section <- function(title, ...) {
 
 overview_module_ui <- function(diagnosis) {
   shiny::tagList(
-    if (diagnosis$has_commits) shiny::tagList(
-      shiny::h3("Histórico de Commits", style = "margin: 0 0 24px 0; font-weight: 600; color: #EDEDED; font-size: 18px;"),
+    shiny::div(
+      class = "tr-overview-header",
+      shiny::span(class = "tr-overview-title", "Histórico de Commits"),
+      if (diagnosis$has_commits && !is.null(diagnosis$branch) && nzchar(diagnosis$branch)) {
+        shiny::span(class = "tr-overview-branch", shiny::icon("code-branch"), " ", diagnosis$branch)
+      }
+    ),
+    if (diagnosis$has_commits) {
       shiny::HTML(render_commit_timeline_html(diagnosis))
-    ) else {
-      shiny::div(
-        style = "padding: 24px; text-align: center; color: #71717A;",
-        shiny::p("Nenhum commit ainda. Comece adicionando suas mudanças na aba 'Git e GitHub'.")
-      )
+    } else {
+      render_overview_empty_state_ui(diagnosis)
     }
+  )
+}
+
+render_overview_empty_state_ui <- function(diagnosis) {
+  steps <- list(
+    list(
+      done = isTRUE(diagnosis$has_repo),
+      label = "Inicializar Git",
+      hint = "Rastreia o histórico do projeto",
+      nav = "git"
+    ),
+    list(
+      done = isTRUE(diagnosis$identity$complete),
+      label = "Configurar identidade",
+      hint = "Seu nome aparece nos commits",
+      nav = "git"
+    ),
+    list(
+      done = isTRUE(diagnosis$has_commits),
+      label = "Fazer o primeiro commit",
+      hint = "Salva a versão inicial do projeto",
+      nav = "git"
+    ),
+    list(
+      done = isTRUE(diagnosis$has_remote),
+      label = "Conectar ao GitHub",
+      hint = "Backup na nuvem e colaboração",
+      nav = "git"
+    )
+  )
+
+  next_step_nav <- NULL
+  items_html <- vapply(steps, function(s) {
+    if (s$done) {
+      icon_html <- "<span class='tr-steps-icon done'>&#10003;</span>"
+      label_style <- "color: #52525B;"
+      hint_style <- "color: #3F3F46;"
+    } else {
+      if (is.null(next_step_nav)) next_step_nav <<- s$nav
+      icon_html <- "<span class='tr-steps-icon pending'></span>"
+      label_style <- "color: #EDEDED;"
+      hint_style <- "color: #A1A1AA;"
+    }
+    sprintf(
+      "<div class='tr-steps-item'><div>%s</div><div><div style='font-size: 14px; font-weight: 500; %s'>%s</div><div style='font-size: 12px; margin-top: 2px; %s'>%s</div></div></div>",
+      icon_html,
+      label_style, htmltools::htmlEscape(s$label),
+      hint_style, htmltools::htmlEscape(s$hint)
+    )
+  }, character(1))
+
+  nav_onclick <- if (!is.null(next_step_nav)) {
+    sprintf("Shiny.setInputValue('module', '%s', {priority: 'event'});", next_step_nav)
+  } else ""
+
+  shiny::div(
+    class = "tr-overview-empty",
+    shiny::div(
+      class = "tr-steps-card",
+      shiny::div(
+        class = "tr-steps-heading",
+        "Primeiros passos para versionar seu projeto"
+      ),
+      shiny::div(class = "tr-steps-list", shiny::HTML(paste(items_html, collapse = ""))),
+      if (nzchar(nav_onclick)) {
+        shiny::tags$button(
+          "Ir para Git e GitHub →",
+          class = "btn btn-primary tr-steps-cta",
+          onclick = nav_onclick
+        )
+      }
+    )
   )
 }
 
@@ -1676,29 +1751,43 @@ render_commit_timeline_html <- function(diagnosis) {
     return("")
   }
 
-  history <- repo_commit_history(diagnosis$path, max_commits = 10)
+  history <- repo_commit_history(diagnosis$path, max_commits = 15)
   if (nrow(history) == 0) return("")
-  
+
   items <- lapply(seq_len(nrow(history)), function(i) {
     row <- history[i, ]
     hash_short <- substr(row$commit, 1, 7)
     time_str <- time_ago(row$time)
-    
+    date_str <- format(row$time, "%d/%m/%Y")
+
+    # Truncate message to first line, max 80 chars
+    msg_first <- strsplit(row$message, "\n", fixed = TRUE)[[1]][1]
+    msg_first <- trimws(msg_first)
+    if (nchar(msg_first) > 80) {
+      msg_first <- paste0(substr(msg_first, 1, 80), "…")
+    }
+
+    is_head <- i == 1
+    head_badge <- if (is_head) " <span class='tr-timeline-head'>HEAD</span>" else ""
+
     paste0(
-      "<div class='tr-timeline-item'>",
-      "<div class='tr-timeline-dot'></div>",
-      "<div class='tr-timeline-content'>",
-      "<div class='tr-timeline-header'>",
-      "<span class='tr-timeline-author'>", htmltools::htmlEscape(row$author), "</span>",
+      "<div class='tr-timeline-item", if (is_head) " tr-timeline-item-head" else "", "'>",
+      "<div class='tr-timeline-dot", if (is_head) " tr-timeline-dot-head" else "", "'></div>",
+      "<div class='tr-timeline-meta'>",
       "<span class='tr-timeline-time'>", time_str, "</span>",
+      "<span class='tr-timeline-date'>", date_str, "</span>",
       "</div>",
-      "<div class='tr-timeline-message'>", htmltools::htmlEscape(row$message), "</div>",
-      "<div class='tr-timeline-hash'>", hash_short, "</div>",
+      "<div class='tr-timeline-content'>",
+      "<div class='tr-timeline-message'>", htmltools::htmlEscape(msg_first), head_badge, "</div>",
+      "<div class='tr-timeline-footer'>",
+      "<span class='tr-timeline-author'>", htmltools::htmlEscape(row$author), "</span>",
+      "<span class='tr-timeline-hash'>", hash_short, "</span>",
+      "</div>",
       "</div>",
       "</div>"
     )
   })
-  
+
   paste0(
     "<div class='tr-timeline'>",
     paste(items, collapse = "\n"),
@@ -3313,75 +3402,182 @@ trackR_panel_css <- function() {
   }
 
   /* Timeline */
+  /* Overview header */
+  .tr-overview-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .tr-overview-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: #EDEDED;
+  }
+  .tr-overview-branch {
+    font-size: 12px;
+    color: #93C5FD;
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-family: Menlo, Monaco, Consolas, monospace;
+  }
+
+  /* Timeline */
   .tr-timeline {
     position: relative;
-    padding-left: 16px;
-    border-left: 2px solid #3B82F6;
-    margin-bottom: 24px;
+    padding-left: 20px;
+    border-left: 2px solid #1E3A8A;
   }
   .tr-timeline-item {
     position: relative;
-    margin-bottom: 24px;
-    padding-left: 16px;
+    margin-bottom: 14px;
+    display: grid;
+    grid-template-columns: 68px 1fr;
+    gap: 12px;
+    align-items: start;
   }
   .tr-timeline-item:last-child {
     margin-bottom: 0;
   }
   .tr-timeline-dot {
     position: absolute;
-    left: -23px;
-    top: 6px;
-    width: 12px;
-    height: 12px;
+    left: -26px;
+    top: 9px;
+    width: 10px;
+    height: 10px;
     border-radius: 50%;
-    background: #3B82F6;
+    background: #1E3A8A;
     border: 2px solid #3B82F6;
     z-index: 1;
-    box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
   }
-  .tr-timeline-content {
-    background: #1E3A8A;
-    border: 1px solid #3B82F6;
-    border-radius: 6px;
-    padding: 16px;
-    transition: all 0.15s ease;
+  .tr-timeline-dot-head {
+    background: #3B82F6;
+    box-shadow: 0 0 6px rgba(59, 130, 246, 0.7);
   }
-  .tr-timeline-content:hover {
-    background: #1E40AF;
-    border-color: #60A5FA;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-  }
-  .tr-timeline-header {
+  .tr-timeline-meta {
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 8px;
-    font-size: 13px;
-  }
-  .tr-timeline-author {
-    font-weight: 600;
-    color: #EDEDED;
+    flex-direction: column;
+    align-items: flex-end;
+    padding-top: 8px;
   }
   .tr-timeline-time {
     color: #A1A1AA;
-    font-size: 12px;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .tr-timeline-date {
+    color: #52525B;
+    font-size: 10px;
+    line-height: 1.4;
+  }
+  .tr-timeline-content {
+    background: #111827;
+    border: 1px solid #1F2937;
+    border-radius: 6px;
+    padding: 10px 14px;
+    transition: border-color 0.12s;
+  }
+  .tr-timeline-item-head .tr-timeline-content {
+    background: #1E3A8A;
+    border-color: #3B82F6;
+  }
+  .tr-timeline-content:hover {
+    border-color: #3B82F6;
   }
   .tr-timeline-message {
-    font-size: 14px;
+    font-size: 13px;
     color: #EDEDED;
-    margin-bottom: 10px;
-    white-space: pre-wrap;
-    line-height: 1.5;
     font-weight: 500;
+    line-height: 1.45;
+    margin-bottom: 6px;
+    word-break: break-word;
+  }
+  .tr-timeline-head {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #93C5FD;
+    background: rgba(59, 130, 246, 0.2);
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .tr-timeline-footer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .tr-timeline-author {
+    font-size: 11px;
+    color: #71717A;
   }
   .tr-timeline-hash {
     font-family: Menlo, Monaco, Consolas, monospace;
-    font-size: 11px;
+    font-size: 10px;
     color: #BFDBFE;
-    background: rgba(59, 130, 246, 0.2);
-    padding: 3px 6px;
-    border-radius: 4px;
+    background: rgba(59, 130, 246, 0.12);
+    padding: 1px 5px;
+    border-radius: 3px;
     display: inline-block;
+  }
+
+  /* Overview empty state / primeiros passos */
+  .tr-overview-empty {
+    padding: 8px 0;
+  }
+  .tr-steps-card {
+    background: #111827;
+    border: 1px solid #1F2937;
+    border-radius: 8px;
+    padding: 20px 24px;
+    max-width: 440px;
+  }
+  .tr-steps-heading {
+    font-size: 14px;
+    font-weight: 600;
+    color: #EDEDED;
+    margin-bottom: 16px;
+  }
+  .tr-steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .tr-steps-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .tr-steps-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .tr-steps-icon.done {
+    background: #064E3B;
+    color: #6EE7B7;
+    border: 1px solid #065F46;
+  }
+  .tr-steps-icon.pending {
+    background: transparent;
+    border: 2px solid #374151;
+  }
+  .tr-steps-cta {
+    width: 100%;
+    font-weight: 600;
+    font-size: 14px;
   }
 
   @media (max-width: 900px) {
