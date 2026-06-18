@@ -47,6 +47,15 @@ trackR_panel_ui <- function(project_path, default_module = "project") {
             }, 50);
           }
         });
+        function trackrSwitchTab(tab) {
+          document.querySelectorAll('.tr-preview-tab').forEach(function(b) { b.classList.remove('active'); });
+          document.querySelectorAll('.tr-preview-pane').forEach(function(p) { p.classList.remove('active'); });
+          document.getElementById('tab_btn_' + tab).classList.add('active');
+          document.getElementById('pane_' + tab).classList.add('active');
+          if (tab === 'diff') {
+            Shiny.setInputValue('act_diff_trigger', Math.random());
+          }
+        }
       "))
     ),
     miniUI::miniContentPanel(
@@ -61,10 +70,9 @@ trackR_panel_ui <- function(project_path, default_module = "project") {
               shiny::HTML(paste("<div class='tr-nav-item'>", shiny::icon("heartbeat"), "Visão Geral</div>")),
               shiny::HTML(paste("<div class='tr-nav-item'>", shiny::icon("folder"), "Gerenciar Projeto</div>")),
               shiny::HTML(paste("<div class='tr-nav-item'>", shiny::icon("file-alt"), "Arquivos e Código</div>")),
-              shiny::HTML(paste("<div class='tr-nav-item'>", shiny::icon("github"), "Git e GitHub</div>")),
-              shiny::HTML(paste("<div class='tr-nav-item'>", shiny::icon("chart-bar"), "Relatórios</div>"))
+              shiny::HTML(paste("<div class='tr-nav-item'>", shiny::icon("github"), "Git e GitHub</div>"))
             ),
-            choiceValues = c("overview", "project", "files", "git", "reports"),
+            choiceValues = c("overview", "project", "files", "git"),
             selected = default_module
           )
         ),
@@ -72,23 +80,7 @@ trackR_panel_ui <- function(project_path, default_module = "project") {
           class = "tr-main",
           shiny::uiOutput("project_summary"),
           shiny::uiOutput("module_ui"),
-          shiny::tags$details(
-            class = "tr-log",
-            shiny::tags$summary(
-              class = "tr-log-summary",
-              shiny::tags$span(shiny::icon("terminal"), " Terminal de Execução"),
-              shiny::tags$span(class = "tr-log-hint", "Clique para expandir")
-            ),
-            shiny::div(
-              class = "tr-log-content",
-              shiny::verbatimTextOutput("action_log"),
-              shiny::div(
-                style = "display: flex; gap: 10px;",
-                shiny::actionButton("refresh_all", "Atualizar estado", class = "btn-default btn-sm"),
-                shiny::actionButton("refresh_project_path", "Sincronizar com RStudio", class = "btn-default btn-sm", icon = shiny::icon("sync"))
-              )
-            )
-          )
+          shiny::uiOutput("terminal_panel")
         )
       )
     )
@@ -180,6 +172,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
           shiny::div(
             class = "tr-summary-header",
             shiny::div(
+              class = "tr-summary-title-wrap",
               style = "margin-bottom: 4px;",
               shiny::strong(project_name, style = "font-size: 22px; color: #2563EB; letter-spacing: -0.5px;")
             ),
@@ -215,12 +208,35 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
         project = project_module_ui(),
         files = files_module_ui(d()),
         git = git_module_ui(d()),
-        reports = reports_module_ui(d()),
         overview_module_ui(d())
       )
     })
 
     output$action_log <- shiny::renderText(values$log)
+
+    output$terminal_panel <- shiny::renderUI({
+      if (input$module == "overview") {
+        shiny::tags$details(
+          class = "tr-log",
+          shiny::tags$summary(
+            class = "tr-log-summary",
+            shiny::tags$span(shiny::icon("terminal"), " Registro de ações"),
+            shiny::tags$span(class = "tr-log-hint", "Clique para ver detalhes")
+          ),
+          shiny::div(
+            class = "tr-log-content",
+            shiny::verbatimTextOutput("action_log"),
+            shiny::div(
+              style = "display: flex; gap: 10px;",
+              shiny::tags$div(class = "tr-tooltip", `data-tooltip` = "Recarrega informações do projeto", shiny::actionButton("refresh_all", "Atualizar diagnóstico", class = "btn-default btn-sm")),
+              shiny::tags$div(class = "tr-tooltip", `data-tooltip` = "Abre o projeto que está aberto no RStudio", shiny::actionButton("refresh_project_path", "Usar projeto ativo no RStudio", class = "btn-default btn-sm", icon = shiny::icon("sync")))
+            )
+          )
+        )
+      } else {
+        NULL
+      }
+    })
 
     output$diff_view <- shiny::renderUI({
       shiny::HTML(values$diff_html)
@@ -318,7 +334,12 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
 
     output$file_diff_inline <- shiny::renderUI({
       if (is.null(values$inline_diff_html) || !nzchar(values$inline_diff_html)) {
-        return(NULL)
+        return(shiny::div(
+          class = "tr-preview-empty",
+          shiny::div(class = "tr-preview-empty-icon", shiny::icon("code-branch")),
+          shiny::div(class = "tr-preview-empty-title", "Nenhuma alteração neste arquivo"),
+          shiny::div(class = "tr-preview-empty-hint", "Selecione um arquivo com modificações na lista à esquerda.")
+        ))
       }
       shiny::div(class = "tr-inline-diff", shiny::HTML(values$inline_diff_html))
     })
@@ -338,7 +359,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
 
     shiny::observeEvent(input$navigate_to_files, {
       shiny::updateRadioButtons(session, "module", selected = "files")
-      shiny::showNotification("Navegando para Arquivos e Código → Versionar", type = "message", duration = 2)
+      shiny::showNotification("Navegando para Arquivos e Código", type = "message", duration = 2)
     }, ignoreInit = TRUE)
 
     # Auto-refresh diagnosis every 2 seconds for dynamic badges
@@ -380,7 +401,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
     shiny::observeEvent(input$project_create, {
       project_name <- trimws(input$project_name %||% "")
       if (!nzchar(project_name)) {
-        shiny::showNotification("Informe um nome para o projeto.", type = "error")
+        shiny::showNotification("Preencha o campo 'Nome do projeto' para continuar.", type = "error")
         return()
       }
 
@@ -404,7 +425,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
       name <- trimws(input$git_user_name %||% "")
       email <- trimws(input$git_user_email %||% "")
       if (!nzchar(name) || !nzchar(email)) {
-        shiny::showNotification("Preencha nome e email.", type = "error")
+        shiny::showNotification("Preencha seu nome completo e email para identificar seus commits.", type = "error")
         return()
       }
       run_panel_action(git_set_identity(name, email))
@@ -413,7 +434,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
     shiny::observeEvent(input$project_open, {
       selected <- input$project_to_open %||% ""
       if (!nzchar(selected)) {
-        shiny::showNotification("Nenhum projeto foi informado.", type = "error")
+        shiny::showNotification("Informe o caminho do projeto no campo acima ou clique em 'Procurar...'.", type = "error")
         return()
       }
 
@@ -460,10 +481,23 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
     }, ignoreInit = TRUE)
 
     shiny::observeEvent(input$selected_project_item, {
-      # Ao trocar de arquivo, esconde o diff inline do arquivo anterior.
       values$inline_diff_html <- ""
 
       selected <- trimws(input$selected_project_item %||% "")
+
+      # Dispara diff automaticamente para arquivos com mudanças
+      if (nzchar(selected)) {
+        shiny::isolate({
+          result <- tryCatch(
+            git_diff(file = selected, path = project_path, staged = FALSE, context = "changes"),
+            error = function(e) list(diff = character())
+          )
+          diff_lines <- result$diff %||% character()
+          if (length(diff_lines) > 0) {
+            values$inline_diff_html <- format_diff_for_panel_html(diff_lines)
+          }
+        })
+      }
       if (!nzchar(selected)) {
         return()
       }
@@ -524,19 +558,27 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
         return()
       }
       if (identical(selected, target)) {
-        shiny::showNotification("O novo nome é igual ao atual.", type = "warning")
+        shiny::showNotification("O novo nome é igual ao atual. Informe um nome diferente.", type = "warning")
         return()
       }
       run_panel_action(file_rename(selected, target, path = project_path))
       shiny::showNotification("Arquivo renomeado.", type = "message", duration = 2)
     }, ignoreInit = TRUE)
 
-    shiny::observeEvent(input$act_diff, {
+    run_diff_for_selected <- function() {
       selected <- trimws(input$selected_project_item %||% "")
       if (!nzchar(selected)) return()
       result <- git_diff(file = selected, path = project_path, staged = FALSE, context = "changes")
       diff_lines <- result$diff %||% character()
       values$inline_diff_html <- format_diff_for_panel_html(diff_lines)
+    }
+
+    shiny::observeEvent(input$act_diff, {
+      run_diff_for_selected()
+    }, ignoreInit = TRUE)
+
+    shiny::observeEvent(input$act_diff_trigger, {
+      run_diff_for_selected()
     }, ignoreInit = TRUE)
 
     shiny::observeEvent(input$act_commit, {
@@ -544,7 +586,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
       if (!nzchar(selected)) return()
       message <- trimws(input$act_commit_message %||% "")
       if (!nzchar(message)) {
-        shiny::showNotification("Escreva uma mensagem para o commit.", type = "error")
+        shiny::showNotification("A mensagem do commit não pode estar vazia. Descreva brevemente o que você alterou.", type = "error")
         return()
       }
       stage_output <- capture_lines(git_stage(selected, path = project_path))
@@ -552,7 +594,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
       set_log(paste(c(stage_output, commit_output), collapse = "\n"))
       refresh_panel_state()
       values$inline_diff_html <- ""
-      shiny::showNotification("Versão salva (commit).", type = "message", duration = 2)
+      shiny::showNotification("Versão salva com sucesso.", type = "message", duration = 2)
     }, ignoreInit = TRUE)
 
     shiny::observeEvent(input$act_delete, {
@@ -570,7 +612,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
       tracked_warning <- if (isTRUE(info$was_tracked)) {
         shiny::div(
           style = "margin-top: 12px; padding: 12px; border-radius: 8px; background: #3B1D1F; color: #FECACA; border: 1px solid #7F1D1D;",
-          "Este item está rastreado no Git. A exclusão vai aparecer como remoção nas mudanças do projeto."
+          "Este item está no histórico do Git. Após excluir, a remoção aparecerá como mudança pendente no projeto."
         )
       } else {
         NULL
@@ -578,17 +620,17 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
 
       shiny::showModal(
         shiny::modalDialog(
-          title = "Confirmar exclusão",
+          title = "Excluir item?",
           shiny::p(sprintf("Você quer deletar %s?", info$label)),
           shiny::p("Esta ação remove o item do disco local."),
           tracked_warning,
           if (isTRUE(info$was_tracked)) {
-            shiny::checkboxInput("file_delete_remove_from_git", "Preparar a remoção no Git também", value = TRUE)
+            shiny::checkboxInput("file_delete_remove_from_git", "Registrar a remoção no Git (incluir no próximo commit)", value = TRUE)
           },
           easyClose = TRUE,
           footer = shiny::tagList(
             shiny::modalButton("Cancelar"),
-            shiny::actionButton("confirm_file_delete", "Confirmar exclusão", class = "btn-danger")
+            shiny::actionButton("confirm_file_delete", "Excluir", class = "btn-danger")
           )
         )
       )
@@ -635,7 +677,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
       tracked_warning <- if (isTRUE(info$was_tracked)) {
         shiny::div(
           style = "margin-top: 12px; padding: 12px; border-radius: 8px; background: #3B1D1F; color: #FECACA; border: 1px solid #7F1D1D;",
-          "Este item está rastreado no Git. A exclusão vai aparecer como remoção nas mudanças do projeto."
+          "Este item está no histórico do Git. Após excluir, a remoção aparecerá como mudança pendente no projeto."
         )
       } else {
         NULL
@@ -643,17 +685,17 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
 
       shiny::showModal(
         shiny::modalDialog(
-          title = "Confirmar exclusão",
+          title = "Excluir item?",
           shiny::p(sprintf("Você quer deletar %s?", info$label)),
           shiny::p("Esta ação remove o item do disco local."),
           tracked_warning,
           if (isTRUE(info$was_tracked)) {
-            shiny::checkboxInput("file_delete_remove_from_git", "Preparar a remoção no Git também", value = TRUE)
+            shiny::checkboxInput("file_delete_remove_from_git", "Registrar a remoção no Git (incluir no próximo commit)", value = TRUE)
           },
           easyClose = TRUE,
           footer = shiny::tagList(
             shiny::modalButton("Cancelar"),
-            shiny::actionButton("confirm_file_delete", "Confirmar exclusão", class = "btn-danger")
+            shiny::actionButton("confirm_file_delete", "Excluir", class = "btn-danger")
           )
         )
       )
@@ -711,7 +753,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
     shiny::observeEvent(input$changes_refresh, {
       diagnosis <- refresh_panel_state()
       values$diff_html <- format_diff_for_panel_html(character())
-      shiny::showNotification("Lista de mudanças atualizada.", type = "message", duration = 3)
+      shiny::showNotification("Lista de arquivos com mudanças atualizada.", type = "message", duration = 3)
     }, ignoreInit = TRUE)
 
     shiny::observeEvent(input$changes_diff, {
@@ -737,11 +779,11 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
     shiny::observeEvent(input$changes_discard, {
       shiny::showModal(
         shiny::modalDialog(
-          title = "Cuidado: Descarte Definitivo",
-          "Tem certeza de que deseja descartar as mudanças locais nos arquivos selecionados? Esta ação não pode ser desfeita.",
+          title = "Descartar alterações?",
+          "As alterações dos arquivos selecionados serão removidas permanentemente. Esta ação não pode ser desfeita.",
           footer = shiny::tagList(
             shiny::modalButton("Cancelar"),
-            shiny::actionButton("confirm_discard_action", "Confirmar Descarte", class = "btn-danger")
+            shiny::actionButton("confirm_discard_action", "Descartar alterações", class = "btn-danger")
           )
         )
       )
@@ -780,41 +822,16 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
       run_panel_action(github_check(path = project_path))
     }, ignoreInit = TRUE)
 
+    shiny::observeEvent(input$github_pull, {
+      run_panel_action(git_pull(path = project_path))
+    }, ignoreInit = TRUE)
+
     shiny::observeEvent(input$github_push, {
       run_panel_action(git_push(path = project_path))
     }, ignoreInit = TRUE)
 
     shiny::observeEvent(input$github_sync, {
       run_panel_action(git_sync(path = project_path))
-    }, ignoreInit = TRUE)
-
-    shiny::observeEvent(input$report_browse, {
-      file <- tryCatch(rstudioapi::selectFile(caption = "Selecionar Relatório", filter = "Quarto/RMarkdown (*.qmd *.Rmd *.rmd)", existing = TRUE), error = function(e) NULL)
-      if (!is.null(file) && nzchar(file)) {
-        rel_path <- tryCatch(relative_project_path(file, project_path), error = function(e) file)
-        all_items <- list.files(path = project_path, pattern = "\\.(qmd|Rmd|rmd)$", recursive = TRUE, full.names = FALSE)
-        shiny::updateSelectInput(session, "report_path", choices = unique(c(rel_path, all_items)), selected = rel_path)
-      }
-    }, ignoreInit = TRUE)
-
-    shiny::observeEvent(input$report_preview, {
-      run_panel_action(
-        report_preview(
-          path = panel_optional_path(input$report_path),
-          style = isTRUE(input$report_style)
-        ),
-        refresh = FALSE
-      )
-    }, ignoreInit = TRUE)
-
-    shiny::observeEvent(input$report_live_preview, {
-      run_panel_action(
-        report_live_preview(
-          path = panel_optional_path(input$report_path),
-          style = isTRUE(input$report_style)
-        ),
-        refresh = FALSE
-      )
     }, ignoreInit = TRUE)
 
     shiny::observeEvent(input$format_browse, {
@@ -858,7 +875,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
       if (!is.null(source) && nzchar(source) && !is.null(target) && nzchar(target)) {
         run_panel_action(file_rename(source, target, path = project_path))
       } else {
-        run_panel_action(list(ok = FALSE, output = "Selecione o arquivo/pasta e preencha o novo nome."), refresh = FALSE)
+        shiny::showNotification("Selecione um item na lista e informe o novo nome antes de renomear.", type = "error")
       }
     }, ignoreInit = TRUE)
 
@@ -960,27 +977,30 @@ project_module_ui <- function() {
         "Organizar",
         shiny::br(),
         shiny::div(
-          class = "tr-project-layout",
+          class = "tr-project-layout tr-project-layout--3col",
           shiny::div(
-            style = "display: flex; flex-direction: column; gap: 15px;",
-            shiny::tags$label("Modelo de estrutura", style = "font-weight: 600; font-size: 14px; margin-bottom: 6px; display: block; color: #EDEDED;"),
-            shiny::div(
-              style = "padding: 12px; border-radius: 8px; background: #111827; border: 1px solid #1F2937; color: #D1D5DB; font-size: 13px; line-height: 1.5;",
-              shiny::icon("shield-halved"),
-              " Organizar é seguro: cria apenas as pastas e arquivos que faltam. ",
-              shiny::tags$b("Seus arquivos atuais não são movidos nem alterados."),
-            ),
-            project_template_cards_ui("project_structure_template", selected = "analise_exploratoria"),
+            style = "display: flex; flex-direction: column; gap: 12px;",
             shiny::div(
               class = "tr-checkbox-group",
               shiny::checkboxInput("project_structure_include_data", "Incluir pastas data/raw e data/processed", value = TRUE)
             ),
-            shiny::actionButton("project_structure", "Organizar estrutura", class = "btn-primary", style = "width: 100%; font-weight: 600; font-size: 15px; height: 42px !important;"),
-            shiny::uiOutput("project_organize_status")
+            shiny::tags$div(class = "tr-tooltip", `data-tooltip` = "Cria uma estrutura padrão com pastas para dados, análise e resultados", shiny::actionButton("project_structure", "Organizar estrutura", class = "btn-primary", style = "width: 100%; font-weight: 600; font-size: 15px; height: 42px !important;")),
+            shiny::uiOutput("project_organize_status"),
+            shiny::tags$label("Modelo de estrutura", style = "font-weight: 600; font-size: 14px; margin-top: 4px; margin-bottom: 2px; display: block; color: #EDEDED;"),
+            project_template_cards_ui("project_structure_template", selected = "analise_exploratoria")
           ),
           shiny::div(
-            class = "tr-organize-diff",
-            shiny::uiOutput("project_organize_diff")
+            style = "display: flex; flex-direction: column; gap: 12px;",
+            shiny::div(
+              class = "tr-organize-diff",
+              shiny::uiOutput("project_organize_diff")
+            ),
+            shiny::div(
+              style = "padding: 12px; border-radius: 8px; background: #111827; border: 1px solid #1F2937; color: #D1D5DB; font-size: 13px; line-height: 1.5;",
+              shiny::icon("shield-halved"),
+              " Organizar é seguro: cria apenas o que falta. ",
+              shiny::tags$b("Seus arquivos existentes não são movidos nem alterados.")
+            )
           )
         )
       )
@@ -993,32 +1013,57 @@ files_module_ui <- function(diagnosis) {
     "Arquivos e Código",
     shiny::div(
       class = "tr-explorer",
-
-      # Coluna 1: arvore de arquivos + acoes de criar/importar/organizar
+      # Linha de cima: árvore + ações
       shiny::div(
-        class = "tr-explorer-tree",
+        class = "tr-explorer-top",
         shiny::div(
-          class = "tr-explorer-toolbar",
-          shiny::actionButton("open_create_modal", shiny::tagList(shiny::icon("plus"), " Criar"), class = "btn-primary btn-sm"),
-          shiny::actionButton("open_import_modal", shiny::tagList(shiny::icon("file-import"), " Importar"), class = "btn-default btn-sm")
+          class = "tr-explorer-tree",
+          shiny::div(
+            class = "tr-explorer-toolbar",
+            shiny::actionButton("open_create_modal", shiny::tagList(shiny::icon("plus"), " Criar"), class = "btn-primary btn-sm"),
+            shiny::actionButton("open_import_modal", shiny::tagList(shiny::icon("file-import"), " Importar"), class = "btn-default btn-sm"),
+            shiny::actionButton("act_rename", shiny::tagList(shiny::icon("pen"), " Renomear"), class = "btn-default btn-sm"),
+            shiny::tags$div(class = "tr-tooltip", `data-tooltip` = "Padroniza o estilo do código", shiny::actionButton("act_format", shiny::tagList(shiny::icon("wand-magic-sparkles"), " Formatar"), class = "btn-default btn-sm")),
+            shiny::actionButton("act_delete", shiny::tagList(shiny::icon("trash"), " Excluir"), class = "btn-danger btn-sm")
+          ),
+          shiny::div(
+            class = "tr-explorer-tree-body",
+            shiny::uiOutput("recent_files_explorer")
+          )
         ),
         shiny::div(
-          class = "tr-explorer-tree-body",
-          shiny::uiOutput("recent_files_explorer")
+          class = "tr-explorer-actions",
+          shiny::uiOutput("file_actions_panel")
         )
       ),
-
-      # Coluna 2: conteudo do arquivo selecionado
+      # Linha de baixo: preview + diff (largura total)
       shiny::div(
         class = "tr-explorer-content",
-        shiny::uiOutput("file_content_preview"),
-        shiny::uiOutput("file_diff_inline")
-      ),
-
-      # Coluna 3: acoes contextuais + status Git do arquivo
-      shiny::div(
-        class = "tr-explorer-actions",
-        shiny::uiOutput("file_actions_panel")
+        shiny::div(
+          class = "tr-preview-tabs",
+          shiny::tags$button(
+            class = "tr-preview-tab active",
+            id = "tab_btn_code",
+            onclick = "trackrSwitchTab('code')",
+            shiny::icon("code"), " Código"
+          ),
+          shiny::tags$button(
+            class = "tr-preview-tab",
+            id = "tab_btn_diff",
+            onclick = "trackrSwitchTab('diff')",
+            shiny::icon("exchange-alt"), " Diff"
+          )
+        ),
+        shiny::div(
+          class = "tr-preview-pane active",
+          id = "pane_code",
+          shiny::uiOutput("file_content_preview")
+        ),
+        shiny::div(
+          class = "tr-preview-pane",
+          id = "pane_diff",
+          shiny::uiOutput("file_diff_inline")
+        )
       )
     )
   )
@@ -1054,7 +1099,7 @@ import_modal_ui <- function() {
         class = "tr-checkbox-group",
         shiny::checkboxInput("file_move", "Mover em vez de copiar arquivo", value = FALSE),
         shiny::checkboxInput("file_overwrite", "Substituir arquivo existente", value = FALSE),
-        shiny::checkboxInput("file_add_to_git", "Adicionar ao controle de versão (Git)", value = TRUE)
+        shiny::checkboxInput("file_add_to_git", "Incluir no próximo commit (Git)", value = TRUE)
       )
     ),
     footer = shiny::tagList(
@@ -1111,115 +1156,222 @@ git_module_ui <- function(diagnosis) {
   panel_section(
     "Git e GitHub",
     shiny::div(
-      class = "tr-git-layout",
+      class = "tr-git-dashboard",
+      git_next_action_ui(
+        diagnosis = diagnosis,
+        remote_url = remote_url,
+        commit_enabled = commit_enabled,
+        push_enabled = push_enabled,
+        pending_changes = pending_changes,
+        has_remote_url = has_remote_url
+      ),
       shiny::div(
-          style = "display: flex; flex-direction: column; gap: 16px;",
-          shiny::div(
-            class = "tr-git-subsection",
-            git_step_title("1", "Identidade", complete = isTRUE(diagnosis$identity$complete), description = "Seu nome aparecerá no histórico de versões"),
-            if (isTRUE(diagnosis$identity$complete)) {
-              shiny::div(
-                class = "tr-git-success-note",
-                shiny::span("Identidade atual"),
-                shiny::strong(sprintf("%s <%s>", diagnosis$identity$name, diagnosis$identity$email))
-              )
-            },
-            shiny::textInput("git_user_name", "Seu Nome Completo", value = diagnosis$identity$name %||% ""),
-            shiny::textInput("git_user_email", "Seu Email Acadêmico/Profissional", value = diagnosis$identity$email %||% ""),
-            panel_action_button("git_save_identity", "Salvar ou editar identidade", class = "btn-primary", enabled = TRUE)
-          ),
-          shiny::div(
-            class = "tr-git-subsection",
-            git_step_title("2", "Git local", complete = diagnosis$has_repo, blocked = !diagnosis$git_installed, description = "Inicialize Git para criar versões do seu projeto"),
-            if (diagnosis$has_repo) {
-              shiny::div(
-                class = "tr-git-success-note",
-                shiny::span("Branch ativa"),
-                shiny::strong(diagnosis$branch %||% "sem branch")
-              )
-            } else {
-              shiny::tagList(
-                panel_action_button("git_init", "Inicializar Git", enabled = diagnosis$git_installed, class = "btn-success"),
-                shiny::div(class = "tr-checkbox-group", shiny::checkboxInput("gitignore_ignore_data", "Ignorar data/raw/ e data/processed/", value = TRUE)),
-                shiny::actionButton("gitignore_write", "Criar ou atualizar .gitignore", class = "btn-primary")
-              )
-            },
-            disabled_reason_ui(!diagnosis$git_installed, "Git não encontrado no computador.")
-          )
-        ),
-      shiny::div(
-          style = "display: flex; flex-direction: column; gap: 16px;",
-          shiny::div(
-            class = "tr-git-subsection",
-            git_step_title(
-              "3",
-              "Salvar versão local",
-              complete = diagnosis$has_commits,
-              blocked = !diagnosis$has_repo || !isTRUE(diagnosis$identity$complete),
-              description = "Crie um 'ponto de salvamento' do seu projeto"
-            ),
-            shiny::textInput("commit_message", "Mensagem do commit", value = "Primeiro commit"),
-            panel_action_button(
-              "git_commit",
-              "Preparar tudo e fazer commit",
-              enabled = commit_enabled,
-              class = "btn-success"
-            ),
-            disabled_reason_ui(!diagnosis$has_repo, "Inicialize o Git antes de criar commits."),
-            disabled_reason_ui(diagnosis$has_repo && !isTRUE(diagnosis$identity$complete), "Configure nome e email antes de criar commits."),
-            disabled_reason_ui(diagnosis$has_repo && isTRUE(diagnosis$identity$complete) && pending_changes == 0, "Não há mudanças pendentes para commitar.")
-          ),
-          shiny::div(
-            class = "tr-git-subsection",
-            git_step_title("4", "Conectar GitHub", complete = diagnosis$has_remote, blocked = !diagnosis$has_repo, description = "Crie um backup das versões na nuvem (opcional no início)"),
-            if (!diagnosis$has_repo) {
-              git_notice_ui("Ative o Git local antes de conectar um repositório remoto.")
-            },
-            if (has_remote_url) {
-              shiny::div(
-                class = "tr-git-current-remote",
-                shiny::span("Remote atual"),
-                shiny::code(remote_url)
-              )
-            },
-            shiny::textInput("github_remote_url", "URL do repositório GitHub", value = remote_url),
-            if (has_remote_url) {
-              shiny::checkboxInput("github_replace_remote", "Trocar URL conectada", value = FALSE)
-            },
-            panel_action_button("github_connect", if (has_remote_url) "Salvar remote" else "Conectar remote", enabled = diagnosis$has_repo, class = "btn-primary"),
-            disabled_reason_ui(!diagnosis$has_repo, "Inicialize o Git antes de conectar o GitHub.")
-          ),
-          shiny::div(
-            class = "tr-git-subsection",
-            git_step_title(
-              "5",
-              "Enviar",
-              complete = diagnosis$has_remote && diagnosis$has_commits,
-              blocked = !diagnosis$has_remote || !diagnosis$has_commits || is.null(diagnosis$branch),
-              description = "Compartilhe as versões com colegas e professores"
-            ),
-            shiny::div(
-              class = "tr-git-action-row",
-              panel_action_button(
-                "github_push",
-                "Push",
-                enabled = push_enabled,
-                class = "btn-success"
-              ),
-              panel_action_button(
-                "github_sync",
-                "Pull + Push",
-                enabled = push_enabled,
-                class = "btn-default"
-              )
-            ),
-            disabled_reason_ui(!diagnosis$has_remote, "Conecte um repositório GitHub antes de enviar."),
-            disabled_reason_ui(diagnosis$has_remote && !diagnosis$has_commits, "Crie pelo menos uma versão (commit) antes de enviar."),
-            disabled_reason_ui(diagnosis$has_remote && diagnosis$has_commits && is.null(diagnosis$branch), "Não foi possível identificar a versão de trabalho atual.")
-          )
+        class = "tr-git-config",
+        shiny::div(class = "tr-git-config-title", "Configuração"),
+        git_config_rows_ui(
+          diagnosis = diagnosis,
+          remote_url = remote_url,
+          has_remote_url = has_remote_url
         )
       )
     )
+  )
+}
+
+git_next_action_ui <- function(diagnosis, remote_url, commit_enabled, push_enabled, pending_changes, has_remote_url) {
+  if (!isTRUE(diagnosis$identity$complete)) {
+    return(git_action_panel_ui(
+      title = "Configurar identidade",
+      message = "Seu nome e email identificam quem fez cada alteração no projeto.",
+      body = shiny::tagList(
+        shiny::div(
+          class = "tr-git-form-grid",
+          shiny::textInput("git_user_name", "Seu Nome Completo", value = diagnosis$identity$name %||% ""),
+          shiny::textInput("git_user_email", "Seu Email Acadêmico/Profissional", value = diagnosis$identity$email %||% "")
+        ),
+        panel_action_button("git_save_identity", "Salvar identidade", class = "btn-primary", enabled = TRUE, tooltip = "Seu nome aparece em todos os commits que você fizer")
+      )
+    ))
+  }
+
+  if (!isTRUE(diagnosis$git_installed)) {
+    return(git_action_panel_ui(
+      title = "Instalar Git",
+      message = "Git não foi encontrado neste computador.",
+      body = git_notice_ui("Instale o Git para criar histórico de versões neste projeto.")
+    ))
+  }
+
+  if (!isTRUE(diagnosis$has_repo)) {
+    return(git_action_panel_ui(
+      title = "Ativar Git local",
+      message = "Este projeto ainda não tem Git ativado.",
+      body = shiny::tagList(
+        panel_action_button("git_init", "Inicializar Git", enabled = TRUE, class = "btn-primary", tooltip = "Ativa o Git neste projeto para salvar versões"),
+        shiny::div(class = "tr-checkbox-group", shiny::checkboxInput("gitignore_ignore_data", "Ignorar data/raw/ e data/processed/", value = TRUE)),
+        shiny::actionButton("gitignore_write", "Criar ou atualizar .gitignore", class = "btn-default")
+      )
+    ))
+  }
+
+  if (pending_changes > 0) {
+    return(git_action_panel_ui(
+      title = "Salvar versão local",
+      message = sprintf("Você tem %d mudança(s) pendente(s).", pending_changes),
+      body = shiny::tagList(
+        shiny::textInput("commit_message", "Mensagem do commit", value = "", placeholder = "Ex: Adiciona análise descritiva, Corrige importação dos dados"),
+        panel_action_button(
+          "git_commit",
+          "Preparar tudo e fazer commit",
+          enabled = commit_enabled,
+          class = "btn-primary",
+          tooltip = "Salva um ponto de salvamento (snapshot) do seu projeto"
+        )
+      )
+    ))
+  }
+
+  if (!isTRUE(diagnosis$has_remote)) {
+    return(git_action_panel_ui(
+      title = "Conectar GitHub",
+      message = "Salve seu projeto no GitHub para ter backup e poder compartilhar.",
+      body = shiny::tagList(
+        shiny::textInput("github_remote_url", "URL do repositório GitHub", value = remote_url, placeholder = "Ex: https://github.com/seu-usuario/seu-projeto"),
+        panel_action_button("github_connect", "Conectar remote", enabled = TRUE, class = "btn-primary", tooltip = "Vincula seu projeto ao repositório do GitHub")
+      )
+    ))
+  }
+
+  if (!isTRUE(diagnosis$has_commits)) {
+    return(git_action_panel_ui(
+      title = "Aguardar mudanças",
+      message = "O projeto está pronto. Edite ou crie arquivos para fazer seu primeiro commit.",
+      body = disabled_reason_ui(TRUE, "Nenhuma mudança detectada ainda.")
+    ))
+  }
+
+  git_action_panel_ui(
+    title = if (push_enabled) "Sincronizar com GitHub" else "Projeto em dia",
+    message = "Nenhuma mudança pendente. Seu histórico local está atualizado.",
+    body = shiny::div(
+      class = "tr-git-action-row",
+      panel_action_button("github_pull", "Pull", enabled = diagnosis$has_remote, class = "btn-default", tooltip = "Baixa as mudanças do GitHub"),
+      panel_action_button("github_push", "Push", enabled = push_enabled, class = "btn-primary", tooltip = "Envia seus commits para o GitHub"),
+      panel_action_button("github_sync", "Pull + Push", enabled = push_enabled, class = "btn-default", tooltip = "Baixa e envia mudanças em uma só ação")
+    )
+  )
+}
+
+git_action_panel_ui <- function(title, message, body) {
+  shiny::div(
+    class = "tr-git-next-action",
+    shiny::div(class = "tr-git-next-label", "Próxima ação"),
+    shiny::h5(title),
+    shiny::p(message),
+    body
+  )
+}
+
+git_config_rows_ui <- function(diagnosis, remote_url, has_remote_url) {
+  identity_value <- if (isTRUE(diagnosis$identity$complete)) {
+    sprintf("%s <%s>", diagnosis$identity$name, diagnosis$identity$email)
+  } else {
+    "pendente"
+  }
+
+  shiny::div(
+    class = "tr-git-config-list",
+    git_config_row_ui(
+      title = "Identidade",
+      value = identity_value,
+      complete = isTRUE(diagnosis$identity$complete),
+      details = if (isTRUE(diagnosis$identity$complete)) {
+        shiny::tagList(
+          shiny::div(
+            class = "tr-git-form-grid",
+            shiny::textInput("git_user_name", "Seu Nome Completo", value = diagnosis$identity$name %||% ""),
+            shiny::textInput("git_user_email", "Seu Email Acadêmico/Profissional", value = diagnosis$identity$email %||% "")
+          ),
+          panel_action_button("git_save_identity", "Salvar identidade", class = "btn-primary", enabled = TRUE, tooltip = "Seu nome aparece em todos os commits que você fizer")
+        )
+      }
+    ),
+    git_config_row_ui(
+      title = "Git local",
+      value = if (diagnosis$has_repo) paste("Branch", diagnosis$branch %||% "sem branch") else "Não inicializado",
+      complete = diagnosis$has_repo,
+      blocked = !diagnosis$git_installed
+    ),
+    git_config_row_ui(
+      title = "GitHub",
+      value = if (has_remote_url) remote_url else "Remote não configurado",
+      complete = diagnosis$has_remote,
+      blocked = !diagnosis$has_repo,
+      details = if (diagnosis$has_repo && has_remote_url) {
+        shiny::tagList(
+          shiny::textInput("github_remote_url", "URL do repositório GitHub", value = remote_url, placeholder = "Ex: https://github.com/seu-usuario/seu-projeto"),
+          if (has_remote_url) shiny::checkboxInput("github_replace_remote", "Trocar URL conectada", value = FALSE),
+          panel_action_button("github_connect", if (has_remote_url) "Salvar remote" else "Conectar remote", enabled = TRUE, class = "btn-primary", tooltip = "Configura a conexão com o repositório do GitHub")
+        )
+      }
+    ),
+    git_config_row_ui(
+      title = "Sincronização",
+      value = git_sync_status_text(diagnosis),
+      complete = diagnosis$has_remote && diagnosis$has_commits,
+      blocked = !diagnosis$has_remote || !diagnosis$has_commits || is.null(diagnosis$branch)
+    )
+  )
+}
+
+git_config_row_ui <- function(title, value, complete = FALSE, blocked = FALSE, details = NULL) {
+  state <- if (isTRUE(complete)) {
+    "complete"
+  } else if (isTRUE(blocked)) {
+    "blocked"
+  } else {
+    "pending"
+  }
+
+  icon <- if (isTRUE(complete)) {
+    "\u2713"
+  } else if (isTRUE(blocked)) {
+    shiny::icon("lock")
+  } else {
+    "\u2022"
+  }
+
+  row_header <- shiny::div(
+    class = paste("tr-git-config-row-head", state),
+    shiny::span(class = "tr-git-config-state", icon),
+    shiny::span(class = "tr-git-config-name", title),
+    shiny::span(class = "tr-git-config-value", value),
+    if (!is.null(details)) shiny::span(class = "tr-git-config-action", "Editar")
+  )
+
+  if (is.null(details)) {
+    return(shiny::div(class = "tr-git-config-row", row_header))
+  }
+
+  shiny::tags$details(
+    class = "tr-git-config-row tr-git-config-details",
+    shiny::tags$summary(row_header),
+    shiny::div(class = "tr-git-config-detail-body", details)
+  )
+}
+
+git_sync_status_text <- function(diagnosis) {
+  if (!isTRUE(diagnosis$has_remote)) {
+    return("Remote não configurado")
+  }
+  if (!isTRUE(diagnosis$has_commits)) {
+    return("Nenhum commit ainda")
+  }
+  if (is.null(diagnosis$branch)) {
+    return("Branch não identificada")
+  }
+
+  "Pronto para enviar"
 }
 
 git_status_badge_items <- function(diagnosis) {
@@ -1235,7 +1387,7 @@ git_status_badge_items <- function(diagnosis) {
     ),
     list(
       label = "Commits",
-      value = if (diagnosis$has_commits) "existem" else "nenhum",
+      value = if (diagnosis$has_commits) "com histórico" else "sem commits",
       class = if (diagnosis$has_commits) "ok" else "warn",
       title = if (diagnosis$has_commits) "Histórico de commits existe" else "Crie o primeiro commit"
     ),
@@ -1276,37 +1428,6 @@ git_notice_ui <- function(text) {
   shiny::div(class = "tr-git-notice", text)
 }
 
-git_step_title <- function(number, title, complete = FALSE, blocked = FALSE, description = NULL) {
-  state_class <- if (isTRUE(complete)) {
-    "complete"
-  } else if (isTRUE(blocked)) {
-    "blocked"
-  } else {
-    "pending"
-  }
-  badge <- if (isTRUE(complete)) {
-    "\u2713"
-  } else if (isTRUE(blocked)) {
-    shiny::icon("lock")
-  } else {
-    number
-  }
-
-  shiny::tagList(
-    shiny::div(
-      class = paste("tr-git-step-title", state_class),
-      shiny::span(class = "tr-git-step-number", badge),
-      shiny::span(title)
-    ),
-    if (!is.null(description) && nzchar(description)) {
-      shiny::div(
-        class = "tr-step-description",
-        description
-      )
-    }
-  )
-}
-
 changes_module_ui <- function(diagnosis) {
   if (!diagnosis$has_repo) {
     return(
@@ -1316,8 +1437,8 @@ changes_module_ui <- function(diagnosis) {
           style = "padding: 20px; text-align: center; color: #856404; background: #fff3cd; border-radius: 6px;",
           shiny::div(style = "display: flex; align-items: center; justify-content: center; margin-bottom: 12px;", shiny::icon("exclamation-triangle", style = "font-size: 28px;")),
           shiny::h4("Git não inicializado"),
-          shiny::p("O Controle Fino de Mudanças exige que o Git esteja ativo neste projeto."),
-          shiny::p("Por favor, vá para a aba ", shiny::strong("Git e GitHub"), " e inicialize o repositório.")
+          shiny::p("Esta funcionalidade exige que o Git esteja ativo neste projeto."),
+          shiny::p("Vá para a aba ", shiny::strong("Git e GitHub"), " e clique em 'Inicializar Git'.")
         )
       )
     )
@@ -1329,7 +1450,7 @@ changes_module_ui <- function(diagnosis) {
     return(
       shiny::tagList(
         panel_section(
-          "Arquivos com mudancas",
+          "Arquivos com mudanças",
           shiny::actionButton("changes_refresh", "Atualizar lista"),
           shiny::div(
             style = "padding: 40px 20px; text-align: center; color: #1a7f37; background: #dafbe1; border-radius: 6px; margin-top: 15px;",
@@ -1353,7 +1474,7 @@ changes_module_ui <- function(diagnosis) {
         choices = c("Ver apenas os trechos alterados" = "changes", "Ver arquivo todo com as mudanças destacadas" = "full"),
         selected = "changes"
       ),
-      shiny::actionButton("changes_diff", "Inspecionar Mudanças", class = "btn-primary")
+      shiny::tags$div(class = "tr-tooltip", `data-tooltip` = "Veja as mudanças linha por linha antes de salvar", shiny::actionButton("changes_diff", "Inspecionar Mudanças", class = "btn-primary"))
     ),
     panel_section(
       "Salvar nova versão (Commit)",
@@ -1362,7 +1483,7 @@ changes_module_ui <- function(diagnosis) {
         shiny::p("O commit funciona como um 'ponto de salvamento' (savepoint) do seu projeto. Você sempre poderá voltar a ele se algo der errado no futuro.", style = "margin-bottom: 0; color: #EDE9FE; font-size: 14px;")
       ),
       shiny::selectInput("changes_files", "Arquivos a incluir nesta versão", choices = files, multiple = TRUE),
-      shiny::textInput("changes_commit_message", "Mensagem curta descrevendo o que você fez", value = "Atualiza análise"),
+      shiny::textInput("changes_commit_message", "Mensagem curta descrevendo o que você fez", value = "", placeholder = "Ex: Adiciona análise descritiva, Corrige importação dos dados"),
       shiny::actionButton("changes_commit_selected", "Salvar Versão (Commit)", class = "btn-success")
     ),
     panel_section(
@@ -1381,47 +1502,18 @@ changes_module_ui <- function(diagnosis) {
       ),
       shiny::div(
         style = "border-left: 4px solid #DC2626; padding-left: 12px; margin-top: 12px; color: #FECACA; font-size: 13px; line-height: 1.5;",
-        "A ação abaixo é irreversível. Use apenas se cometeu erro e quer descartar tudo que editou."
+        "A ação abaixo é irreversível. Use apenas quando quiser desfazer todas as alterações que ainda não foram salvas em um commit."
       ),
       shiny::div(style = "margin-top: 16px;",
-        shiny::actionButton("changes_discard", "Descartar alterações (Apagar para sempre)", class = "btn-danger")
+        shiny::tags$div(class = "tr-tooltip", `data-tooltip` = "Desfaz as alterações não salvas nos arquivos selecionados", shiny::actionButton("changes_discard", "Descartar alterações selecionadas", class = "btn-danger"))
       )
     )
   )
 }
-
-
-
-reports_module_ui <- function(diagnosis) {
-  report_files <- if (!is.null(diagnosis$current_path) && nzchar(diagnosis$current_path)) {
-    list.files(path = diagnosis$current_path, pattern = "\\.(qmd|Rmd|rmd)$", recursive = TRUE, full.names = FALSE)
-  } else {
-    character(0)
-  }
-  
-  choices <- c("Nenhum relatório (busque na pasta 📁)" = "", report_files)
-  report_input <- shiny::selectInput("report_path", "Selecione o Relatório", choices = choices, width = "100%")
-
-  panel_section(
-    "Visualizar Relatório (Preview)",
-    shiny::p("Gere o preview dos seus relatórios Quarto/RMarkdown diretamente pelo painel.", style = "font-size: 13px; color: #A1A1AA; margin-bottom: 15px; line-height: 1.4;"),
-    shiny::div(
-      style = "display: flex; gap: 8px; align-items: flex-end; margin-bottom: 15px;",
-      shiny::div(style = "flex-grow: 1;", report_input),
-      shiny::actionButton("report_browse", "📁", class = "btn-default", style = "margin-bottom: 15px; height: 38px;", title = "Procurar relatório no computador")
-    ),
-    shiny::div(
-      style = "display: flex; gap: 10px;",
-      panel_action_button("report_preview", "Gerar Preview", class = "btn-primary", enabled = TRUE),
-      panel_action_button("report_live_preview", "Live Preview", class = "btn-default", enabled = TRUE)
-    )
-  )
-}
-
 format_module_ui <- function(diagnosis) {
   format_files <- project_format_file_choices(diagnosis$current_path)
   
-  choices <- c("Nenhum script (busque na pasta 📁)" = "", format_files)
+  choices <- c("Nenhum script selecionado" = "", format_files)
   file_input <- shiny::selectInput("format_path", "Selecionar script (opcional)", choices = choices, width = "100%")
 
   shiny::tagList(
@@ -1432,8 +1524,8 @@ format_module_ui <- function(diagnosis) {
     ),
     shiny::div(
       style = "display: flex; flex-direction: column; gap: 10px;",
-      shiny::actionButton("format_active", "Formatar arquivo", class = "btn-primary", style = "width: 100%; font-weight: 600; font-size: 14px; height: 38px !important;"),
-      shiny::actionButton("format_project", "Formatar todo o projeto", class = "btn-default", style = "width: 100%; font-weight: 600; font-size: 14px; height: 38px !important;")
+      shiny::tags$div(class = "tr-tooltip", `data-tooltip` = "Padroniza o estilo do arquivo selecionado", shiny::actionButton("format_active", "Formatar arquivo", class = "btn-primary", style = "width: 100%; font-weight: 600; font-size: 14px; height: 38px !important;")),
+      shiny::tags$div(class = "tr-tooltip", `data-tooltip` = "Padroniza o estilo de todos os arquivos R do projeto", shiny::actionButton("format_project", "Formatar todo o projeto", class = "btn-default", style = "width: 100%; font-weight: 600; font-size: 14px; height: 38px !important;"))
     )
   )
 }
@@ -1615,7 +1707,7 @@ render_overview_empty_state_ui <- function(diagnosis) {
     list(
       done = isTRUE(diagnosis$has_repo),
       label = "Inicializar Git",
-      hint = "Rastreia o histórico do projeto",
+      hint = "Cria o registro de versões do projeto",
       nav = "git"
     ),
     list(
@@ -1633,7 +1725,7 @@ render_overview_empty_state_ui <- function(diagnosis) {
     list(
       done = isTRUE(diagnosis$has_remote),
       label = "Conectar ao GitHub",
-      hint = "Backup na nuvem e colaboração",
+      hint = "Backup na nuvem e compartilhamento",
       nav = "git"
     )
   )
@@ -1682,18 +1774,24 @@ render_overview_empty_state_ui <- function(diagnosis) {
   )
 }
 
-panel_action_button <- function(id, label, enabled = TRUE, class = "btn-default") {
-  if (isTRUE(enabled)) {
-    return(shiny::actionButton(id, label, class = class))
+panel_action_button <- function(id, label, enabled = TRUE, class = "btn-default", tooltip = NULL) {
+  button_elem <- if (isTRUE(enabled)) {
+    shiny::actionButton(id, label, class = class)
+  } else {
+    shiny::tags$button(
+      id = id,
+      type = "button",
+      class = paste("btn", class, "action-button"),
+      disabled = "disabled",
+      label
+    )
   }
 
-  shiny::tags$button(
-    id = id,
-    type = "button",
-    class = paste("btn", class, "action-button"),
-    disabled = "disabled",
-    label
-  )
+  if (!is.null(tooltip)) {
+    shiny::tags$div(class = "tr-tooltip", `data-tooltip` = tooltip, button_elem)
+  } else {
+    button_elem
+  }
 }
 
 panel_optional_path <- function(path) {
@@ -1951,7 +2049,7 @@ project_organize_planned_entries <- function(path, template, include_data) {
 
   starter <- names(template_starter_files(template, project_name))
   files <- c("README.md", starter)
-  if (isFALSE(include_data)) {
+  if (isTRUE(include_data)) {
     files <- c(files, "data/raw/README.md", "data/processed/README.md")
   }
 
@@ -1995,7 +2093,7 @@ render_simple_tree_html <- function(rel_paths, muted = TRUE) {
 
 render_project_organize_diff_html <- function(path, template, include_data) {
   if (is.null(path) || !nzchar(path) || !fs::dir_exists(path)) {
-    return("<div style='color: #EF4444; font-style: italic;'>Caminho do projeto inválido.</div>")
+    return("<div style='color: #EF4444; font-style: italic;'>Não foi possível localizar o projeto. Tente reabrir o painel.</div>")
   }
 
   current <- list_project_files_tree(path)
@@ -2026,7 +2124,11 @@ render_project_organize_diff_html <- function(path, template, include_data) {
   summary_txt <- if (n_new == 0) {
     "<span style='color: #6EE7B7;'>Tudo pronto — a estrutura deste modelo já existe.</span>"
   } else {
-    sprintf("<span style='color: #6EE7B7; font-weight: 600;'>%d item(ns) será(ão) criado(s)</span> <span style='color: #71717A;'>· os demais já existem e ficam intactos.</span>", n_new)
+    if (n_new == 1L) {
+      "<span style='color: #6EE7B7; font-weight: 600;'>1 item será criado</span> <span style='color: #71717A;'>· os demais já existem e ficam intactos.</span>"
+    } else {
+      sprintf("<span style='color: #6EE7B7; font-weight: 600;'>%d itens serão criados</span> <span style='color: #71717A;'>· os demais já existem e ficam intactos.</span>", n_new)
+    }
   }
 
   paste0(
@@ -2079,7 +2181,7 @@ list_project_files_tree <- function(path) {
 render_project_files_explorer_html <- function(path, diagnosis, selected = "") {
   # Validate path
   if (is.null(path) || !nzchar(path) || !fs::dir_exists(path)) {
-    return("<div style='color: #EF4444; font-style: italic;'>Caminho do projeto inválido ou não existe.</div>")
+    return("<div style='color: #EF4444; font-style: italic;'>Não foi possível localizar o projeto. Tente reabrir o painel.</div>")
   }
 
   files <- list_project_files_tree(path)
@@ -2197,7 +2299,7 @@ render_file_content_preview_html <- function(path, selected = "") {
       "<div class='tr-preview-empty'>",
       "<div class='tr-preview-empty-icon'>\U0001F4C4</div>",
       "<div class='tr-preview-empty-title'>Nenhum arquivo selecionado</div>",
-      "<div class='tr-preview-empty-hint'>Clique em um arquivo na árvore à esquerda para ver o conteúdo e as ações disponíveis.</div>",
+      "<div class='tr-preview-empty-hint'>Clique em um arquivo na lista à esquerda para ver o conteúdo e as ações disponíveis.</div>",
       "</div>"
     ))
   }
@@ -2214,7 +2316,7 @@ render_file_content_preview_html <- function(path, selected = "") {
       "<div class='tr-preview-empty'>",
       "<div class='tr-preview-empty-icon'>\U0001F4C1</div>",
       "<div class='tr-preview-empty-title'>", htmltools::htmlEscape(basename(selected)), "/</div>",
-      "<div class='tr-preview-empty-hint'>Pasta com ", n_items, " item(ns). Selecione um arquivo para visualizar o conteúdo.</div>",
+      "<div class='tr-preview-empty-hint'>Pasta com ", if (n_items == 1L) "1 item" else paste(n_items, "itens"), ". Selecione um arquivo para visualizar o conteúdo.</div>",
       "</div>"
     ))
   }
@@ -2227,7 +2329,7 @@ render_file_content_preview_html <- function(path, selected = "") {
       "<div class='tr-preview-empty'>",
       "<div class='tr-preview-empty-icon'>\U0001F4CA</div>",
       "<div class='tr-preview-empty-title'>", htmltools::htmlEscape(basename(selected)), "</div>",
-      "<div class='tr-preview-empty-hint'>Arquivo de dados/binário (", toupper(ext), "). Sem pré-visualização de texto.</div>",
+      "<div class='tr-preview-empty-hint'>Arquivo binário (", toupper(ext), "). Abra no RStudio para visualizar o conteúdo.</div>",
       "</div>"
     ))
   }
@@ -2237,7 +2339,7 @@ render_file_content_preview_html <- function(path, selected = "") {
       "<div class='tr-preview-empty'>",
       "<div class='tr-preview-empty-icon'>\U0001F4C4</div>",
       "<div class='tr-preview-empty-title'>", htmltools::htmlEscape(basename(selected)), "</div>",
-      "<div class='tr-preview-empty-hint'>Arquivo muito grande (", round(size / 1024), " KB) para pré-visualizar aqui.</div>",
+      "<div class='tr-preview-empty-hint'>Arquivo muito grande (", round(size / 1024), " KB). Abra no RStudio para ver o conteúdo completo.</div>",
       "</div>"
     ))
   }
@@ -2301,7 +2403,7 @@ file_actions_panel_ui <- function(path, diagnosis, selected = "") {
       shiny::div(
         class = "tr-actions-empty",
         shiny::div(class = "tr-actions-empty-icon", shiny::icon("hand-pointer")),
-        shiny::div(class = "tr-actions-empty-text", "Selecione um arquivo na árvore para ver as ações disponíveis.")
+        shiny::div(class = "tr-actions-empty-text", "Selecione um arquivo na lista para ver as ações disponíveis.")
       )
     )
   }
@@ -2339,46 +2441,17 @@ file_actions_panel_ui <- function(path, diagnosis, selected = "") {
     shiny::div(
       class = "tr-actions-head",
       shiny::div(class = "tr-actions-filename", basename(selected)),
-      shiny::div(class = "tr-actions-path", selected),
-      if (diagnosis$has_repo) {
-        shiny::span(class = paste("tr-pill", status_class), shiny::span(class = "tr-pill-value", status_label))
-      }
-    ),
-
-    if (!is_dir_val) {
-      shiny::div(
-        class = "tr-actions-group",
-        shiny::div(class = "tr-actions-group-title", "Ações"),
-        if (is_formattable) {
-          shiny::actionButton("act_format", shiny::tagList(shiny::icon("wand-magic-sparkles"), " Formatar código"), class = "btn-default", style = "width:100%; justify-content:flex-start; margin-bottom:8px;")
-        },
-        if (diagnosis$has_repo && has_changes) {
-          shiny::actionButton("act_diff", shiny::tagList(shiny::icon("code-compare"), " Ver mudanças (diff)"), class = "btn-default", style = "width:100%; justify-content:flex-start; margin-bottom:8px;")
-        }
-      )
-    },
-
-    shiny::div(
-      class = "tr-actions-group",
-      shiny::div(class = "tr-actions-group-title", "Renomear"),
-      shiny::textInput("act_rename_target", label = NULL, value = selected, width = "100%"),
-      shiny::actionButton("act_rename", shiny::tagList(shiny::icon("pen"), " Renomear / mover"), class = "btn-default", style = "width:100%; justify-content:flex-start;")
+      shiny::div(class = "tr-actions-path", selected)
     ),
 
     if (diagnosis$has_repo && has_changes) {
       shiny::div(
         class = "tr-actions-group",
         shiny::div(class = "tr-actions-group-title", "Salvar versão (commit)"),
-        shiny::textInput("act_commit_message", label = NULL, value = "", placeholder = "O que você mudou neste arquivo?", width = "100%"),
-        shiny::actionButton("act_commit", shiny::tagList(shiny::icon("floppy-disk"), " Commit deste arquivo"), class = "btn-primary", style = "width:100%; justify-content:flex-start;")
+        shiny::textAreaInput("act_commit_message", label = NULL, value = "", placeholder = "O que você fez? Ex: Corrigi o cálculo da média, Adicionei gráfico de distribuição", width = "100%", rows = 5),
+        shiny::actionButton("act_commit", shiny::tagList(shiny::icon("floppy-disk"), " Commit deste arquivo"), class = "btn-primary", style = "width:100%; justify-content:center;")
       )
-    },
-
-    shiny::div(
-      class = "tr-actions-group tr-actions-danger",
-      shiny::div(class = "tr-actions-group-title", "Zona de perigo"),
-      shiny::actionButton("act_delete", shiny::tagList(shiny::icon("trash"), " Excluir"), class = "btn-danger", style = "width:100%; justify-content:flex-start;")
-    )
+    }
   )
 }
 
@@ -2492,9 +2565,9 @@ trackR_panel_css <- function() {
     box-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
   }
   .btn-sm {
-    height: 30px !important;
-    padding: 0 12px !important;
-    font-size: 12px !important;
+    height: 24px !important;
+    padding: 0 10px !important;
+    font-size: 10px !important;
   }
   .btn-default {
     background-color: #262626 !important;
@@ -2580,7 +2653,6 @@ trackR_panel_css <- function() {
     height: 16px;
     cursor: pointer;
   }
-
   /* Navigation Sidebar */
   .tr-sidebar input[type=radio] {
     display: none !important;
@@ -2639,9 +2711,8 @@ trackR_panel_css <- function() {
 
   /* Sticky Header */
   .tr-summary {
-    border-bottom: 1px solid #2D2D2D;
-    padding-bottom: var(--gap-md);
-    margin-bottom: var(--gap-lg);
+    padding-bottom: 6px;
+    margin-bottom: 6px;
     background: rgba(22, 22, 22, 0.98);
     backdrop-filter: blur(8px);
     position: sticky;
@@ -2655,9 +2726,14 @@ trackR_panel_css <- function() {
   }
   .tr-summary-header {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 16px;
+    flex-wrap: nowrap;
+  }
+  .tr-summary-title-wrap {
+    flex: 0 1 auto;
+    min-width: 0;
   }
   .tr-path {
     color: #A1A1AA;
@@ -2671,15 +2747,19 @@ trackR_panel_css <- function() {
     gap: var(--gap-sm);
     margin-top: 0;
     justify-content: flex-end;
+    align-content: flex-start;
+    flex: 1 1 0;
+    min-width: 0;
   }
   .tr-pill {
-    border-radius: 6px;
+    border-radius: 5px;
     border: 1px solid #2D2D2D;
-    padding: 6px 12px;
+    padding: 5px 10px;
     background: #1C1C1C;
     display: flex;
     align-items: center;
-    gap: var(--gap-xs);
+    gap: 6px;
+    flex: 0 0 auto;
     box-shadow: 0 1px 2px rgba(0,0,0,0.3);
   }
   .tr-pill.interactive {
@@ -2692,8 +2772,8 @@ trackR_panel_css <- function() {
     background: #262626;
   }
   .tr-pill.ok {
-    border-color: #34D399;
-    background: rgba(52, 211, 153, 0.15);
+    border-color: #2F9E75;
+    background: rgba(20, 83, 65, 0.32);
   }
   .tr-pill.warn {
     border-color: #B45309;
@@ -2703,19 +2783,57 @@ trackR_panel_css <- function() {
     border-color: #991B1B;
     background: rgba(220, 38, 38, 0.15);
   }
-  .tr-pill.ok .tr-pill-value { color: #A7F3D0; }
+  .tr-pill.ok .tr-pill-value { color: #B7E4CE; }
   .tr-pill.warn .tr-pill-value { color: #FCD34D; }
   .tr-pill.error .tr-pill-value { color: #FCA5A5; }
-  
+
   .tr-pill-label {
-    font-size: 12px;
+    font-size: 10px;
     color: #A1A1AA;
     font-weight: 500;
   }
   .tr-pill-value {
     font-weight: 600;
-    font-size: 13px;
+    font-size: 11px;
     color: #EDEDED;
+  }
+  .modal-content {
+    background: #161616 !important;
+    color: #EDEDED !important;
+    border: 1px solid #2D2D2D !important;
+    border-radius: 10px !important;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55) !important;
+  }
+  .modal-header {
+    background: #1C1C1C !important;
+    border-bottom: 1px solid #2D2D2D !important;
+    color: #EDEDED !important;
+  }
+  .modal-header .modal-title {
+    color: #EDEDED !important;
+    font-weight: 600 !important;
+  }
+  .modal-header .close {
+    color: #A1A1AA !important;
+    opacity: 1 !important;
+    text-shadow: none !important;
+  }
+  .modal-body {
+    background: #161616 !important;
+    color: #D4D4D8 !important;
+  }
+  .modal-body p,
+  .modal-body label,
+  .modal-body .checkbox,
+  .modal-body .checkbox label {
+    color: #D4D4D8 !important;
+  }
+  .modal-footer {
+    background: #1C1C1C !important;
+    border-top: 1px solid #2D2D2D !important;
+  }
+  .modal-backdrop.in {
+    opacity: 0.72 !important;
   }
 
   /* Main Sections */
@@ -2737,91 +2855,131 @@ trackR_panel_css <- function() {
   .tr-section .form-group {
     margin-bottom: var(--gap-md);
   }
-  .tr-git-current-remote code {
-    color: #EDEDED;
-    background: transparent;
-    padding: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .tr-git-layout {
+  .tr-git-dashboard {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(320px, 0.95fr) minmax(420px, 1.35fr);
     gap: var(--gap-lg);
     align-items: start;
   }
-  .tr-git-subsection {
+  .tr-git-next-action {
     border: 1px solid #2D2D2D;
     border-radius: 8px;
-    background: #161616;
-    padding: var(--gap-md);
+    background: #111111;
+    padding: 18px;
+    min-width: 0;
   }
-  .tr-git-subtitle {
-    margin: 0 0 12px 0;
-    color: #EDEDED;
-    font-size: 14px;
+  .tr-git-next-label {
+    color: #93C5FD;
+    font-size: 11px;
     font-weight: 700;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+    text-transform: uppercase;
   }
-  .tr-git-step-title {
-    display: flex;
+  .tr-git-next-action h5 {
+    color: #EDEDED;
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 8px 0;
+  }
+  .tr-git-next-action p {
+    color: #A1A1AA;
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 0 0 16px 0;
+  }
+  .tr-git-next-action .form-group,
+  .tr-git-config-detail-body .form-group {
+    max-width: 520px;
+  }
+  .tr-git-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    max-width: 760px;
+  }
+  .tr-git-config {
+    min-width: 0;
+  }
+  .tr-git-config-title {
+    color: #EDEDED;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .tr-git-config-list {
+    border: 1px solid #2D2D2D;
+    border-radius: 8px;
+    background: #111111;
+    overflow: hidden;
+  }
+  .tr-git-config-row {
+    border-bottom: 1px solid #2D2D2D;
+  }
+  .tr-git-config-row:last-child {
+    border-bottom: 0;
+  }
+  .tr-git-config-row summary {
+    list-style: none;
+    cursor: pointer;
+  }
+  .tr-git-config-row summary::-webkit-details-marker {
+    display: none;
+  }
+  .tr-git-config-row-head {
+    display: grid;
+    grid-template-columns: 28px minmax(120px, 0.45fr) minmax(0, 1fr) auto;
+    gap: 12px;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
-    color: #EDEDED;
-    font-size: 14px;
-    font-weight: 700;
+    padding: 12px 14px;
+    min-width: 0;
   }
-  .tr-git-step-number {
+  .tr-git-config-state {
+    align-items: center;
+    border: 1px solid #3F3F46;
+    border-radius: 999px;
+    color: #A1A1AA;
     display: inline-flex;
-    align-items: center;
+    font-size: 12px;
+    font-weight: 700;
+    height: 24px;
     justify-content: center;
     width: 24px;
-    height: 24px;
-    border-radius: 999px;
-    background: #262626;
-    border: 1px solid #3F3F46;
+  }
+  .tr-git-config-row-head.complete .tr-git-config-state {
+    background: rgba(52, 211, 153, 0.14);
+    border-color: #10B981;
+    color: #A7F3D0;
+  }
+  .tr-git-config-row-head.blocked .tr-git-config-state {
+    background: rgba(153, 27, 27, 0.18);
+    border-color: #991B1B;
+    color: #FCA5A5;
+  }
+  .tr-git-config-name {
     color: #EDEDED;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
-    flex: 0 0 auto;
   }
-  .tr-step-description {
-    font-size: 11px;
-    color: #71717A;
-    margin-top: 6px;
-    margin-left: 0;
-    line-height: 1.4;
-    font-weight: 400;
-  }
-  .tr-git-step-title.complete .tr-git-step-number {
-    background: #6B21A8;
-    border-color: #9333EA;
-    color: #EDE9FE;
-  }
-  .tr-git-step-title.blocked .tr-git-step-number {
-    background: #2D2D2D;
-    border-color: #3F3F46;
+  .tr-git-config-value {
     color: #A1A1AA;
-  }
-  .tr-git-success-note {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 10px;
-    align-items: center;
-    border: 1px solid #6B21A8;
-    border-radius: 6px;
-    background: rgba(107, 33, 168, 0.15);
-    color: #D8B4FE;
-    padding: 8px 10px;
-    margin-bottom: 12px;
-    font-size: 12px;
-  }
-  .tr-git-success-note strong {
-    color: #E9D5FF;
+    font-size: 13px;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .tr-git-config-action {
+    color: #93C5FD;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .tr-git-config-detail-body {
+    border-top: 1px solid #2D2D2D;
+    padding: 14px;
+    background: #0D0D0D;
   }
   .tr-git-action-row {
     display: flex;
@@ -2851,19 +3009,6 @@ trackR_panel_css <- function() {
     margin-bottom: 12px;
     font-size: 12px;
     line-height: 1.4;
-  }
-  .tr-git-current-remote {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 10px;
-    align-items: center;
-    border: 1px solid #2D2D2D;
-    border-radius: 6px;
-    background: #0D0D0D;
-    color: #A1A1AA;
-    font-size: 12px;
-    padding: 8px 10px;
-    margin-bottom: 12px;
   }
   .tr-log {
     margin-top: 32px;
@@ -2919,82 +3064,98 @@ trackR_panel_css <- function() {
     margin-bottom: 12px;
   }
   .tr-diff {
-    border: 1px solid #d8dee4;
-    border-radius: 6px;
+    border: 1px solid #2D2D2D;
+    border-radius: 8px;
     overflow: auto;
-    background: #f6f8fa;
+    background: #0B0F14;
     font-size: 12px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
   }
   .tr-diff-line {
     display: grid;
-    grid-template-columns: 28px minmax(0, 1fr);
-    min-height: 22px;
-    border-bottom: 1px solid rgba(216, 222, 228, 0.65);
+    grid-template-columns: 34px minmax(0, 1fr);
+    min-height: 24px;
+    border-bottom: 1px solid rgba(45, 45, 45, 0.7);
   }
   .tr-diff-line:last-child {
     border-bottom: 0;
   }
   .tr-diff-line code {
     display: block;
-    padding: 3px 8px;
-    color: #24292f;
+    padding: 4px 10px;
+    color: #D4D4D8;
     background: transparent;
     white-space: pre;
     font-family: Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    line-height: 1.45;
   }
   .tr-diff-marker {
-    padding: 3px 0;
+    padding: 4px 0;
     text-align: center;
-    color: #57606a;
+    color: #71717A;
     user-select: none;
     font-family: Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+    font-weight: 700;
   }
   .tr-diff-add {
-    background: #dafbe1;
+    background: rgba(20, 83, 45, 0.42);
   }
   .tr-diff-add .tr-diff-marker {
-    color: #1a7f37;
-    background: #aceebb;
+    color: #A7F3D0;
+    background: rgba(22, 101, 52, 0.6);
+  }
+  .tr-diff-add code {
+    color: #D1FAE5;
   }
   .tr-diff-remove {
-    background: #ffebe9;
+    background: rgba(127, 29, 29, 0.38);
   }
   .tr-diff-remove .tr-diff-marker {
-    color: #cf222e;
-    background: #ffcecb;
+    color: #FECACA;
+    background: rgba(153, 27, 27, 0.55);
+  }
+  .tr-diff-remove code {
+    color: #FEE2E2;
   }
   .tr-diff-hunk {
-    background: #ddf4ff;
+    background: rgba(30, 64, 175, 0.28);
   }
   .tr-diff-hunk .tr-diff-marker {
-    color: #0969da;
-    background: #b6e3ff;
+    color: #BFDBFE;
+    background: rgba(30, 64, 175, 0.5);
+  }
+  .tr-diff-hunk code {
+    color: #BFDBFE;
+    font-weight: 700;
   }
   .tr-diff-meta {
-    background: #f6f8fa;
+    background: #111827;
   }
   .tr-diff-meta code {
-    color: #57606a;
+    color: #9CA3AF;
     font-weight: 600;
   }
   .tr-diff-context {
-    background: #fff;
+    background: #0B0F14;
   }
   .tr-diff-empty {
-    border: 1px dashed #d8dee4;
-    border-radius: 6px;
+    border: 1px dashed #374151;
+    border-radius: 8px;
     padding: 14px;
-    color: #57606a;
-    background: #f6f8fa;
+    color: #A1A1AA;
+    background: #111111;
   }
   /* Project Management Layout */
   .tr-project-layout {
     display: grid;
-    grid-template-columns: 1fr 1.2fr;
+    grid-template-columns: 1fr 1.4fr;
     gap: 32px;
     align-items: start;
     margin-top: 10px;
     min-width: 0;
+  }
+  .tr-project-layout--3col {
+    grid-template-columns: 1fr 1.4fr;
   }
   .tr-project-layout > * {
     min-width: 0;
@@ -3070,95 +3231,146 @@ trackR_panel_css <- function() {
     line-height: 1.4;
   }
   
-  /* Unified File Explorer (3 columns) */
+  /* Unified File Explorer */
   .tr-explorer {
-    display: grid;
-    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(240px, 300px);
-    gap: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    height: calc(100vh - 100px);
+    min-height: 600px;
+  }
+  .tr-explorer-top {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    flex: 0 0 320px;
+    min-height: 0;
     align-items: stretch;
-    min-height: 480px;
   }
-  @media (max-width: 980px) {
-    .tr-explorer {
-      grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
-    }
-    .tr-explorer-actions {
-      grid-column: 1 / -1;
-    }
-  }
-  @media (max-width: 680px) {
-    .tr-explorer {
-      grid-template-columns: 1fr;
-    }
-  }
-  .tr-explorer-tree,
-  .tr-explorer-content,
-  .tr-explorer-actions {
+  .tr-explorer-tree {
+    flex: 1 1 0;
     background: #0D0D0D;
     border: 1px solid #2D2D2D;
     border-radius: 8px;
-    min-width: 0;
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
   }
+  .tr-explorer-actions {
+    flex: 0 0 210px;
+    background: #0D0D0D;
+    border: 1px solid #2D2D2D;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow-y: auto;
+    padding: 11px;
+  }
+  .tr-explorer-content {
+    flex: 1 1 0;
+    background: #0D0D0D;
+    border: 1px solid #2D2D2D;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .tr-preview-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid #2D2D2D;
+    flex-shrink: 0;
+    background: #111111;
+  }
+  .tr-preview-tab {
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #71717A;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 8px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tr-preview-tab:hover { color: #EDEDED; }
+  .tr-preview-tab.active { color: #EDEDED; border-bottom-color: #6366F1; }
+  .tr-preview-pane {
+    display: none;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: auto;
+  }
+  .tr-preview-pane.active { display: flex; flex-direction: column; }
   .tr-explorer-toolbar {
     display: flex;
-    gap: 8px;
-    padding: 10px;
+    flex-wrap: wrap;
+    gap: 3px;
+    padding: 7px 8px;
     border-bottom: 1px solid #2D2D2D;
     flex-shrink: 0;
   }
   .tr-explorer-toolbar .btn {
-    height: 32px !important;
-    padding: 0 12px !important;
+    height: 26px !important;
+    padding: 0 9px !important;
+    font-size: 11px !important;
+    white-space: nowrap;
   }
   .tr-explorer-tree-body {
     padding: 10px;
     overflow-y: auto;
-    max-height: 560px;
     flex-grow: 1;
-  }
-  .tr-explorer-content {
-    overflow: hidden;
-  }
-  .tr-explorer-actions {
-    padding: 16px;
-    overflow-y: auto;
-    max-height: 620px;
+    min-height: 0;
   }
 
   /* Code preview (center column) */
   .tr-code-preview {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    flex: 1 1 0;
     min-height: 0;
+    min-width: 0;
   }
   .tr-code-header {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
+    align-items: center;
+    justify-content: flex-start;
     gap: 12px;
-    padding: 12px 16px;
+    padding: 10px 16px;
     border-bottom: 1px solid #2D2D2D;
     flex-shrink: 0;
   }
+  .tr-code-header .btn {
+    flex-shrink: 0;
+    height: 32px !important;
+    padding: 0 10px !important;
+    font-size: 12px !important;
+  }
   .tr-code-filename {
-    font-weight: 600;
-    font-size: 14px;
+    font-weight: 500;
+    font-size: 12px;
     color: #EDEDED;
     font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    flex-shrink: 0;
   }
   .tr-code-meta {
     font-size: 11px;
     color: #71717A;
     white-space: nowrap;
+    margin-left: auto;
   }
   .tr-code-body {
     overflow: auto;
     padding: 8px 0;
     flex-grow: 1;
-    max-height: 560px;
+    width: 100%;
   }
   .tr-code-row {
     display: flex;
@@ -3238,41 +3450,52 @@ trackR_panel_css <- function() {
     line-height: 1.5;
   }
   .tr-actions-head {
-    padding-bottom: 14px;
+    padding-bottom: 11px;
     border-bottom: 1px solid #2D2D2D;
-    margin-bottom: 16px;
+    margin-bottom: 13px;
   }
   .tr-actions-filename {
     font-weight: 600;
-    font-size: 15px;
+    font-size: 12px;
     color: #EDEDED;
     word-break: break-word;
   }
   .tr-actions-path {
-    font-size: 11px;
+    font-size: 9px;
     color: #71717A;
     word-break: break-all;
-    margin: 2px 0 10px 0;
+    margin: 2px 0 8px 0;
   }
   .tr-actions-group {
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
   .tr-actions-group-title {
-    font-size: 11px;
+    font-size: 9px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: #71717A;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
   .tr-actions-danger .tr-actions-group-title {
     color: #F87171;
   }
   .tr-inline-diff {
     border-top: 1px solid #2D2D2D;
-    padding: 12px 16px;
+    padding: 14px 16px 16px;
     overflow: auto;
-    max-height: 300px;
+    max-height: 520px;
+    background: #09090B;
+  }
+  .tr-inline-diff::before {
+    content: 'Diff deste arquivo';
+    display: block;
+    color: #A1A1AA;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    margin-bottom: 10px;
+    text-transform: uppercase;
   }
 
   /* Tree Card and Previews */
@@ -3585,17 +3808,63 @@ trackR_panel_css <- function() {
       grid-template-columns: 1fr;
       height: auto;
     }
-    .tr-git-layout {
+    .tr-git-dashboard,
+    .tr-git-form-grid {
       grid-template-columns: 1fr;
     }
-    .tr-summary-header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 10px;
+    .tr-git-config-row-head {
+      grid-template-columns: 28px minmax(0, 1fr) auto;
+    }
+    .tr-git-config-value {
+      grid-column: 2 / -1;
+      white-space: normal;
     }
     .tr-summary-grid {
-      justify-content: flex-start;
+      justify-content: flex-end;
+      min-width: 0;
     }
   }
+
+  /* Tooltips */
+  .tr-tooltip {
+    position: relative;
+    display: inline-block;
+  }
+  .tr-tooltip[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #2D2D2D;
+    color: #EDEDED;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1000;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    border: 1px solid #444444;
+  }
+  .tr-tooltip[data-tooltip]::before {
+    content: '';
+    position: absolute;
+    bottom: -44px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #2D2D2D;
+    z-index: 1001;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .tr-tooltip[data-tooltip]:hover::after,
+  .tr-tooltip[data-tooltip]:hover::before {
+    opacity: 1;
+  }
   "
+
 }
