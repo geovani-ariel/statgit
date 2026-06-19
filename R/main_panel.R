@@ -25,7 +25,7 @@ statgit <- function(path = active_project_path()) {
 
   shiny::runGadget(
     trackR_panel_ui(project_path, default_module),
-    server = trackR_panel_server(project_path, initial_diagnosis),
+    server = trackR_panel_server(project_path, initial_diagnosis, default_module),
     viewer = shiny::paneViewer(minHeight = "maximize")
   )
 
@@ -63,18 +63,8 @@ trackR_panel_ui <- function(project_path, default_module = "project") {
         class = "tr-shell",
         shiny::div(
           class = "tr-sidebar",
-          shiny::radioButtons(
-            "module",
-            label = NULL,
-            choiceNames = list(
-              shiny::HTML(paste("<div class='tr-nav-item'>", shiny::icon("heartbeat"), "Vis\u00E3o Geral</div>")),
-              shiny::HTML(paste("<div class='tr-nav-item'>", shiny::icon("folder"), "Gerenciar Projeto</div>")),
-              shiny::HTML(paste("<div class='tr-nav-item'>", shiny::icon("file-alt"), "Arquivos e C\u00F3digo</div>")),
-              shiny::HTML(paste("<div class='tr-nav-item'>", shiny::icon("github"), "Git e GitHub</div>"))
-            ),
-            choiceValues = c("overview", "project", "files", "git"),
-            selected = default_module
-          )
+          shiny::uiOutput("language_selector"),
+          shiny::uiOutput("module_nav")
         ),
         shiny::div(
           class = "tr-main",
@@ -87,10 +77,13 @@ trackR_panel_ui <- function(project_path, default_module = "project") {
   )
 }
 
-trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
+trackR_panel_server <- function(project_path, initial_diagnosis = NULL, default_module = "project") {
   force(project_path)
 
   function(input, output, session) {
+    language <- shiny::reactive(input$trackr_language %||% "pt")
+    tr <- trackr_tr(language)
+
     panel_project_path <- function(path) {
       normalized <- normalize_project_path(path)
 
@@ -318,6 +311,31 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
       )
     })
 
+    output$language_selector <- shiny::renderUI({
+      shiny::selectInput(
+        "trackr_language",
+        tr("language.label"),
+        choices = trackr_language_choices(tr),
+        selected = "pt",
+        width = "100%"
+      )
+    })
+
+    output$module_nav <- shiny::renderUI({
+      shiny::radioButtons(
+        "module",
+        label = NULL,
+        choiceNames = list(
+          shiny::HTML(paste("<div class='tr-nav-item'>", shiny::icon("heartbeat"), tr("nav.overview"), "</div>")),
+          shiny::HTML(paste("<div class='tr-nav-item'>", shiny::icon("folder"), tr("nav.project"), "</div>")),
+          shiny::HTML(paste("<div class='tr-nav-item'>", shiny::icon("file-alt"), tr("nav.files"), "</div>")),
+          shiny::HTML(paste("<div class='tr-nav-item'>", shiny::icon("github"), tr("nav.git"), "</div>"))
+        ),
+        choiceValues = c("overview", "project", "files", "git"),
+        selected = input$module %||% default_module
+      )
+    })
+
     output$module_ui <- shiny::renderUI({
       switch(
         input$module %||% "overview",
@@ -337,16 +355,16 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
           class = "tr-log",
           shiny::tags$summary(
             class = "tr-log-summary",
-            shiny::tags$span(shiny::icon("terminal"), " Registro de a\u00E7\u00F5es"),
-            shiny::tags$span(class = "tr-log-hint", "Clique para ver detalhes")
+            shiny::tags$span(shiny::icon("terminal"), tr("log.title")),
+            shiny::tags$span(class = "tr-log-hint", tr("log.hint"))
           ),
           shiny::div(
             class = "tr-log-content",
             shiny::verbatimTextOutput("action_log"),
             shiny::div(
               style = "display: flex; gap: 10px;",
-              shiny::tags$div(class = "tr-tooltip", `data-tooltip` = "Recarrega informa\u00E7\u00F5es do projeto", shiny::actionButton("refresh_all", "Atualizar diagn\u00F3stico", class = "btn-default btn-sm")),
-              shiny::tags$div(class = "tr-tooltip", `data-tooltip` = "Abre o projeto que est\u00E1 aberto no RStudio", shiny::actionButton("refresh_project_path", "Usar projeto ativo no RStudio", class = "btn-default btn-sm", icon = shiny::icon("sync")))
+              shiny::tags$div(class = "tr-tooltip", `data-tooltip` = tr("log.refresh.tooltip"), shiny::actionButton("refresh_all", tr("log.refresh.button"), class = "btn-default btn-sm")),
+              shiny::tags$div(class = "tr-tooltip", `data-tooltip` = tr("log.active_project.tooltip"), shiny::actionButton("refresh_project_path", tr("log.active_project.button"), class = "btn-default btn-sm", icon = shiny::icon("sync")))
             )
           )
         )

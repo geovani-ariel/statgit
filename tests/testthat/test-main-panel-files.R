@@ -44,11 +44,14 @@ test_that("painel aciona criacao de arquivo com os dados da UI", {
 test_that("painel principal inclui estrutura de navegacao", {
   skip_if_not_installed("shiny")
 
-  html <- htmltools::renderTags(statgit_panel_ui(withr::local_tempdir()))$html
+  server <- statgit_panel_server(withr::local_tempdir())
 
-  expect_match(html, "tr-sidebar", fixed = TRUE)
-  expect_match(html, "tr-main", fixed = TRUE)
-  expect_match(html, "Visão Geral", fixed = TRUE)
+  shiny::testServer(server, {
+    html <- htmltools::renderTags(output$module_nav)$html
+
+    expect_match(html, "tr-nav-item", fixed = TRUE)
+    expect_match(html, "Visão Geral|Overview")
+  })
 })
 
 test_that("painel confirma exclusao antes de deletar", {

@@ -1,3 +1,20 @@
+test_that("painel principal exibe seletor de idioma", {
+  skip_if_not_installed("shiny")
+
+  server <- statgit_panel_server(withr::local_tempdir())
+
+  shiny::testServer(server, {
+    session$setInputs(trackr_language = "en")
+
+    language_ui <- htmltools::renderTags(output$language_selector)$html
+    module_nav_ui <- htmltools::renderTags(output$module_nav)$html
+
+    expect_match(language_ui, "trackr_language", fixed = TRUE)
+    expect_match(language_ui, "Language")
+    expect_match(module_nav_ui, "Overview")
+  })
+})
+
 test_that("statgit_panel_server inicializa com diagnostico e log", {
   skip_if_not_installed("shiny")
 
