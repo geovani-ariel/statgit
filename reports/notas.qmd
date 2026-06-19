@@ -1,0 +1,16 @@
+---
+title: "Notas de exploracao"
+format: html
+---
+
+Projeto: RStudio - Pacote
+
+## Objetivo
+
+Descreva aqui o objetivo deste relatorio.
+
+## Proximos passos
+
+- Atualizar os dados
+- Rodar a analise
+- Revisar as figuras

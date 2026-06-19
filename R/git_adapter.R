@@ -131,6 +131,25 @@ repo_current_branch <- function(path = ".") {
   branch
 }
 
+repo_upstream_branch <- function(path = ".") {
+  repo <- git_repo_root(path)
+  if (is.null(repo) || !repo_has_commits(repo)) {
+    return(NULL)
+  }
+
+  result <- run_git(c("rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"), path = repo)
+  if (result$status != 0L || length(result$output) == 0) {
+    return(NULL)
+  }
+
+  branch <- trimws(result$output[[1]])
+  if (!nzchar(branch)) {
+    return(NULL)
+  }
+
+  branch
+}
+
 repo_has_remote <- function(path = ".") {
   repo <- git_repo_root(path)
   if (is.null(repo)) {
@@ -169,6 +188,29 @@ repo_remote_info <- function(path = ".") {
   remotes
 }
 
+preferred_remote_name <- function(path = ".", remotes = NULL) {
+  remotes <- remotes %||% repo_remote_info(path)
+
+  if (nrow(remotes) == 0) {
+    return(NULL)
+  }
+
+  upstream_branch <- repo_upstream_branch(path)
+  if (!is.null(upstream_branch) && nzchar(upstream_branch)) {
+    remote_candidates <- remotes$name[startsWith(upstream_branch, paste0(remotes$name, "/"))]
+    if (length(remote_candidates) > 0) {
+      return(remote_candidates[[which.max(nchar(remote_candidates))]])
+    }
+  }
+
+  origin_idx <- which(remotes$name == "origin")[1]
+  if (!is.na(origin_idx)) {
+    return(remotes$name[[origin_idx]])
+  }
+
+  remotes$name[[1]]
+}
+
 remote_by_name <- function(path = ".", remote = "origin") {
   remotes <- repo_remote_info(path)
   if (nrow(remotes) == 0) {
@@ -183,12 +225,105 @@ remote_by_name <- function(path = ".", remote = "origin") {
   as.list(remotes[idx, , drop = FALSE])
 }
 
+remote_branch_exists <- function(path = ".", remote = "origin", branch = NULL) {
+  repo <- git_repo_root(path)
+  branch <- trimws(branch %||% "")
+
+  if (is.null(repo) || !nzchar(branch)) {
+    return(FALSE)
+  }
+
+  result <- run_git(c("ls-remote", "--exit-code", "--heads", remote, branch), path = repo)
+  result$status == 0L
+}
+
+repo_sync_status <- function(path = ".", remote = NULL, branch = NULL) {
+  repo <- git_repo_root(path)
+  if (is.null(repo) || !repo_has_commits(repo)) {
+    return(list(
+      has_upstream = FALSE,
+      upstream_branch = NULL,
+      remote_branch_exists = FALSE,
+      ahead = 0L,
+      behind = 0L,
+      can_compare = FALSE
+    ))
+  }
+
+  current_branch <- branch %||% repo_current_branch(repo)
+  upstream_branch <- repo_upstream_branch(repo)
+  remote_name <- normalize_remote_name(remote)
+  remote_exists <- !is.null(remote_by_name(repo, remote = remote_name))
+  branch_exists <- if (remote_exists) remote_branch_exists(repo, remote = remote_name, branch = current_branch) else FALSE
+
+  if (is.null(upstream_branch)) {
+    return(list(
+      has_upstream = FALSE,
+      upstream_branch = NULL,
+      remote_branch_exists = branch_exists,
+      ahead = 0L,
+      behind = 0L,
+      can_compare = FALSE
+    ))
+  }
+
+  result <- run_git(c("rev-list", "--left-right", "--count", paste0(upstream_branch, "...HEAD")), path = repo)
+  if (result$status != 0L || length(result$output) == 0) {
+    return(list(
+      has_upstream = TRUE,
+      upstream_branch = upstream_branch,
+      remote_branch_exists = branch_exists,
+      ahead = 0L,
+      behind = 0L,
+      can_compare = FALSE
+    ))
+  }
+
+  counts <- strsplit(trimws(result$output[[1]]), "[[:space:]]+")[[1]]
+  behind <- suppressWarnings(as.integer(counts[[1]] %||% "0"))
+  ahead <- suppressWarnings(as.integer(counts[[2]] %||% "0"))
+
+  list(
+    has_upstream = TRUE,
+    upstream_branch = upstream_branch,
+    remote_branch_exists = branch_exists,
+    ahead = ahead %||% 0L,
+    behind = behind %||% 0L,
+    can_compare = TRUE
+  )
+}
+
 looks_like_github_url <- function(url) {
   if (is.null(url) || !nzchar(url)) {
     return(FALSE)
   }
 
   grepl("github\\.com[:/]", url, ignore.case = TRUE)
+}
+
+normalize_remote_name <- function(remote, default = "origin") {
+  value <- trimws(remote %||% "")
+  if (!nzchar(value)) {
+    return(default)
+  }
+
+  value
+}
+
+remote_protocol_label <- function(url) {
+  if (is.null(url) || !nzchar(url)) {
+    return("desconhecido")
+  }
+
+  if (grepl("^git@", url, ignore.case = TRUE) || grepl("^ssh://", url, ignore.case = TRUE)) {
+    return("SSH")
+  }
+
+  if (grepl("^https?://", url, ignore.case = TRUE)) {
+    return("HTTPS")
+  }
+
+  "outro"
 }
 
 repo_status_table <- function(path = ".") {

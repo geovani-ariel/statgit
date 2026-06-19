@@ -73,7 +73,8 @@ project_manager_addin <- function() {
     tr <- trackr_tr(language)
     values <- shiny::reactiveValues(
       create_result = "",
-      open_result = ""
+      open_result = "",
+      clone_result = ""
     )
 
     project_choices <- shiny::reactiveVal(named_project_choices(default_projects_directory()))
@@ -88,7 +89,7 @@ project_manager_addin <- function() {
 
     output$project_manager_content <- shiny::renderUI({
       shiny::fillCol(
-        flex = c(1, 1),
+        flex = c(1, 1, 1),
         shiny::div(
           shiny::h4(tr("manager.create_title")),
           shiny::textInput("base_dir", tr("project.base_dir"), value = default_projects_directory()),
@@ -113,6 +114,15 @@ project_manager_addin <- function() {
           shiny::selectInput("project_choice", tr("manager.found_projects"), choices = character()),
           shiny::actionButton("open_project", tr("manager.open_selected")),
           shiny::verbatimTextOutput("open_result")
+        ),
+        shiny::div(
+          shiny::h4("Clonar repositório"),
+          shiny::textInput("clone_url", "URL do repositório", value = ""),
+          shiny::textInput("clone_base_dir", tr("project.base_dir"), value = default_projects_directory()),
+          shiny::textInput("clone_dir", "Nome da pasta clonada (opcional)", value = ""),
+          shiny::checkboxInput("clone_open_after", tr("project.open_after_create"), value = TRUE),
+          shiny::actionButton("clone_project", "Clonar repositório"),
+          shiny::verbatimTextOutput("clone_result")
         )
       )
     })
@@ -169,6 +179,19 @@ project_manager_addin <- function() {
       shiny::stopApp(selected)
     })
 
+    shiny::observeEvent(input$clone_project, {
+      values$clone_result <- capture_lines(
+        git_clone_repo(
+          remote_url = input$clone_url,
+          path = input$clone_base_dir,
+          directory = input$clone_dir,
+          open = isTRUE(input$clone_open_after)
+        )
+      )
+
+      refresh_project_choices(input$search_root)
+    })
+
     shiny::observeEvent(input$done, {
       shiny::stopApp(invisible(NULL))
     })
@@ -179,6 +202,7 @@ project_manager_addin <- function() {
 
     output$create_result <- shiny::renderText(values$create_result)
     output$open_result <- shiny::renderText(values$open_result)
+    output$clone_result <- shiny::renderText(values$clone_result)
   }
 
   shiny::runGadget(ui, server = server, viewer = shiny::dialogViewer("statgit"))

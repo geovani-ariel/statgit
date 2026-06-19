@@ -195,9 +195,13 @@ git_wizard_server <- function(project_path) {
         shiny::div(
           shiny::h4("6. GitHub"),
           shiny::p(tr("wizard.step.github_help")),
+          shiny::textInput("remote_name", "Nome do remote", value = "origin"),
           shiny::textInput("remote_url", tr("git.remote_url"), value = ""),
           shiny::checkboxInput("replace_remote", tr("git.replace_remote"), value = FALSE),
           shiny::uiOutput("connect_button"),
+          shiny::uiOutput("disconnect_button"),
+          shiny::uiOutput("open_repo_button"),
+          shiny::uiOutput("fetch_button"),
           shiny::uiOutput("auth_button"),
           shiny::uiOutput("push_button"),
           shiny::verbatimTextOutput("github_result")
@@ -230,11 +234,16 @@ git_wizard_server <- function(project_path) {
         wizard_step_note(
           "GitHub",
           if (d$has_remote) {
-            paste(tr("wizard.current_remote"), d$remote_name, "->", d$remote_url)
+            paste(tr("wizard.current_remote"), d$remote_name, sprintf("(%s)", remote_protocol_label(d$remote_url)), "->", d$remote_url)
           } else {
             tr("wizard.no_remote")
           },
           ok = d$has_remote
+        ),
+        wizard_step_note(
+          "Sincronização",
+          wizard_sync_note(d),
+          ok = isTRUE(d$has_remote) && !isTRUE(d$sync_status$behind > 0L)
         )
       )
     })
@@ -270,9 +279,36 @@ git_wizard_server <- function(project_path) {
       wizard_action_button("connect_remote", tr("wizard.connect_remote"), enabled = d$has_repo)
     })
 
+    output$disconnect_button <- shiny::renderUI({
+      d <- diagnosis_ready()
+      if (!d$has_remote) {
+        return(NULL)
+      }
+
+      shiny::actionButton("disconnect_remote", "Desconectar remote", class = "btn-default")
+    })
+
     output$auth_button <- shiny::renderUI({
       d <- diagnosis_ready()
       wizard_action_button("check_remote_auth", tr("wizard.test_github"), enabled = d$has_remote)
+    })
+
+    output$open_repo_button <- shiny::renderUI({
+      d <- diagnosis_ready()
+      if (!d$has_remote) {
+        return(NULL)
+      }
+
+      shiny::actionButton("open_remote_repo", "Abrir repositório", class = "btn-default")
+    })
+
+    output$fetch_button <- shiny::renderUI({
+      d <- diagnosis_ready()
+      if (!d$has_remote) {
+        return(NULL)
+      }
+
+      shiny::actionButton("fetch_remote", "Fetch", class = "btn-default")
     })
 
     output$push_button <- shiny::renderUI({
@@ -280,7 +316,7 @@ git_wizard_server <- function(project_path) {
       wizard_action_button(
         "run_push",
         tr("wizard.push"),
-        enabled = d$has_remote && d$has_commits && !is.null(d$branch)
+        enabled = d$has_remote && d$has_commits && !is.null(d$branch) && !isTRUE(d$sync_status$behind > 0L)
       )
     })
 
@@ -317,7 +353,36 @@ git_wizard_server <- function(project_path) {
         github_connect(
           remote_url = input$remote_url,
           path = project_path,
+          remote = normalize_remote_name(input$remote_name),
           replace = isTRUE(input$replace_remote)
+        )
+      )
+      refresh_diagnosis()
+    })
+
+    shiny::observeEvent(input$disconnect_remote, {
+      shiny::showModal(
+        shiny::modalDialog(
+          title = "Desconectar remote?",
+          shiny::p(sprintf(
+            "Voc\u00EA quer remover a conex\u00E3o com o remote '%s' deste projeto?",
+            normalize_remote_name(input$remote_name, default = diagnosis_ready()$remote_name %||% "origin")
+          )),
+          shiny::p("Isso remove apenas a liga\u00E7\u00E3o com o GitHub. O hist\u00F3rico Git local continua intacto."),
+          footer = shiny::tagList(
+            shiny::modalButton("Cancelar"),
+            shiny::actionButton("confirm_disconnect_remote", "Desconectar remote", class = "btn-danger")
+          )
+        )
+      )
+    })
+
+    shiny::observeEvent(input$confirm_disconnect_remote, {
+      shiny::removeModal()
+      values$github_result <- capture_lines(
+        github_disconnect(
+          path = project_path,
+          remote = normalize_remote_name(input$remote_name, default = diagnosis_ready()$remote_name %||% "origin")
         )
       )
       refresh_diagnosis()
@@ -325,14 +390,27 @@ git_wizard_server <- function(project_path) {
 
     shiny::observeEvent(input$check_remote_auth, {
       values$github_result <- capture_lines(
-        github_check(path = project_path)
+        github_check(path = project_path, remote = normalize_remote_name(input$remote_name))
+      )
+      refresh_diagnosis()
+    })
+
+    shiny::observeEvent(input$open_remote_repo, {
+      values$github_result <- capture_lines(
+        github_open_repo(path = project_path, remote = normalize_remote_name(input$remote_name))
+      )
+    })
+
+    shiny::observeEvent(input$fetch_remote, {
+      values$github_result <- capture_lines(
+        git_fetch(path = project_path, remote = normalize_remote_name(input$remote_name))
       )
       refresh_diagnosis()
     })
 
     shiny::observeEvent(input$run_push, {
       values$github_result <- capture_lines(
-        git_push(path = project_path)
+        git_push(path = project_path, remote = normalize_remote_name(input$remote_name))
       )
       refresh_diagnosis()
     })
@@ -363,4 +441,29 @@ git_wizard_server <- function(project_path) {
       shiny::stopApp(invisible(NULL))
     })
   }
+}
+
+wizard_sync_note <- function(diagnosis) {
+  sync_status <- diagnosis$sync_status
+
+  if (!isTRUE(diagnosis$has_remote)) {
+    return("Remote ainda n\u00E3o configurado.")
+  }
+  if (!isTRUE(diagnosis$has_commits)) {
+    return("Crie pelo menos um commit antes de sincronizar.")
+  }
+  if (is.null(diagnosis$branch)) {
+    return("A branch atual ainda n\u00E3o foi identificada.")
+  }
+  if (!isTRUE(sync_status$remote_branch_exists)) {
+    return("Primeiro push publicar\u00E1 esta branch no remote.")
+  }
+  if (isTRUE(sync_status$behind > 0L)) {
+    return(sprintf("Sua branch local est\u00E1 %d commit(s) atr\u00E1s do remote. Fa\u00E7a Pull antes do Push.", sync_status$behind))
+  }
+  if (isTRUE(sync_status$ahead > 0L)) {
+    return(sprintf("Sua branch local tem %d commit(s) pendente(s) para enviar.", sync_status$ahead))
+  }
+
+  "Branch local sincronizada com o remote."
 }

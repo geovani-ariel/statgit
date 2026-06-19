@@ -169,12 +169,11 @@ test_that("git_module_ui mostra estado atual e motivos de bloqueio", {
     identity = list(name = "Ada", email = "ada@example.com", complete = TRUE),
     has_commits = FALSE,
     has_remote = FALSE,
+    remote_name = NULL,
+    remote_url = NULL,
     branch = "main",
+    sync_status = list(has_upstream = FALSE, upstream_branch = NULL, remote_branch_exists = FALSE, ahead = 0L, behind = 0L, can_compare = FALSE),
     status_counts = list(total = 0L)
-  )
-
-  testthat::local_mocked_bindings(
-    remote_by_name = function(path = ".", remote = "origin") NULL
   )
 
   html <- htmltools::renderTags(git_module_ui(diagnosis))$html
@@ -193,6 +192,8 @@ test_that("git_module_ui mostra estado atual e motivos de bloqueio", {
   expect_false(grepl("Criar ou atualizar .gitignore", html, fixed = TRUE))
   expect_match(html, "tr-git-config-row-head complete", fixed = TRUE)
   expect_match(html, "Remote não configurado", fixed = TRUE)
+  expect_match(html, "Nome do remote", fixed = TRUE)
+  expect_match(html, "Conectar remote", fixed = TRUE)
   expect_false(grepl("Trocar URL conectada", html, fixed = TRUE))
   expect_false(grepl("Testar acesso ao GitHub", html, fixed = TRUE))
 })
@@ -206,7 +207,9 @@ test_that("badges superiores da aba git nao incluem identidade", {
     has_commits = TRUE,
     has_remote = TRUE,
     remote_name = "origin",
+    remote_url = "https://github.com/user/repo.git",
     branch = "main",
+    sync_status = list(has_upstream = TRUE, upstream_branch = "origin/main", remote_branch_exists = TRUE, ahead = 0L, behind = 0L, can_compare = TRUE),
     status_counts = list(total = 2L)
   )
 
@@ -225,22 +228,26 @@ test_that("git_module_ui preenche remote atual quando existir", {
     identity = list(name = "Ada", email = "ada@example.com", complete = TRUE),
     has_commits = TRUE,
     has_remote = TRUE,
+    remote_name = "origin",
+    remote_url = "https://github.com/user/repo.git",
     branch = "main",
+    sync_status = list(has_upstream = TRUE, upstream_branch = "origin/main", remote_branch_exists = TRUE, ahead = 2L, behind = 0L, can_compare = TRUE),
     status_counts = list(total = 0L)
-  )
-
-  testthat::local_mocked_bindings(
-    remote_by_name = function(path = ".", remote = "origin") {
-      list(name = "origin", url = "https://github.com/user/repo.git", is_github = TRUE)
-    }
   )
 
   html <- htmltools::renderTags(git_module_ui(diagnosis))$html
 
   expect_match(html, "Próxima ação", fixed = TRUE)
   expect_match(html, "Sincronizar com GitHub", fixed = TRUE)
+  expect_match(html, "2 commit(s) pendente(s) para enviar", fixed = TRUE)
+  expect_match(html, "Remote atual: origin", fixed = TRUE)
+  expect_match(html, "HTTPS", fixed = TRUE)
   expect_match(html, "https://github.com/user/repo.git", fixed = TRUE)
-  expect_match(html, "Salvar remote", fixed = TRUE)
+  expect_match(html, "Abrir repositório", fixed = TRUE)
+  expect_match(html, "Fetch", fixed = TRUE)
+  expect_match(html, "Nome do remote", fixed = TRUE)
+  expect_match(html, "Reconectar / atualizar remote", fixed = TRUE)
+  expect_match(html, "Desconectar remote", fixed = TRUE)
   expect_match(html, "Trocar URL conectada", fixed = TRUE)
   expect_match(html, "Pull + Push", fixed = TRUE)
 })
@@ -255,7 +262,10 @@ test_that("git_module_ui mostra bloqueios com explicacao", {
     identity = list(name = "", email = "", complete = FALSE),
     has_commits = FALSE,
     has_remote = FALSE,
+    remote_name = NULL,
+    remote_url = NULL,
     branch = NULL,
+    sync_status = list(has_upstream = FALSE, upstream_branch = NULL, remote_branch_exists = FALSE, ahead = 0L, behind = 0L, can_compare = FALSE),
     status_counts = list(total = 0L)
   )
 
@@ -265,4 +275,78 @@ test_that("git_module_ui mostra bloqueios com explicacao", {
   expect_match(html, "tr-git-config-row-head blocked", fixed = TRUE)
   expect_match(html, "Remote não configurado", fixed = TRUE)
   expect_match(html, "pending", fixed = TRUE)
+})
+
+test_that("git_module_ui prioriza pull quando branch local esta atras", {
+  skip_if_not_installed("shiny")
+
+  diagnosis <- list(
+    current_path = normalize_project_path(withr::local_tempdir()),
+    has_repo = TRUE,
+    git_installed = TRUE,
+    identity = list(name = "Ada", email = "ada@example.com", complete = TRUE),
+    has_commits = TRUE,
+    has_remote = TRUE,
+    remote_name = "origin",
+    remote_url = "https://github.com/user/repo.git",
+    branch = "main",
+    sync_status = list(has_upstream = TRUE, upstream_branch = "origin/main", remote_branch_exists = TRUE, ahead = 0L, behind = 3L, can_compare = TRUE),
+    status_counts = list(total = 0L)
+  )
+
+  html <- htmltools::renderTags(git_module_ui(diagnosis))$html
+
+  expect_match(html, "Atualizar branch local", fixed = TRUE)
+  expect_match(html, "3 commit(s) atrás do remote", fixed = TRUE)
+  expect_match(html, "Pull", fixed = TRUE)
+})
+
+test_that("git_module_ui usa o remote do diagnostico mesmo fora de origin", {
+  skip_if_not_installed("shiny")
+
+  diagnosis <- list(
+    current_path = normalize_project_path(withr::local_tempdir()),
+    has_repo = TRUE,
+    git_installed = TRUE,
+    identity = list(name = "Ada", email = "ada@example.com", complete = TRUE),
+    has_commits = TRUE,
+    has_remote = TRUE,
+    remote_name = "upstream",
+    remote_url = "git@github.com:user/repo.git",
+    branch = "main",
+    sync_status = list(has_upstream = TRUE, upstream_branch = "upstream/main", remote_branch_exists = TRUE, ahead = 1L, behind = 0L, can_compare = TRUE),
+    status_counts = list(total = 0L)
+  )
+
+  html <- htmltools::renderTags(git_module_ui(diagnosis))$html
+
+  expect_match(html, "Remote atual: upstream", fixed = TRUE)
+  expect_match(html, "git@github.com:user/repo.git", fixed = TRUE)
+  expect_match(html, "SSH", fixed = TRUE)
+  expect_match(html, "upstream (SSH)", fixed = TRUE)
+})
+
+test_that("aviso de contexto aparece quando painel e RStudio ativo divergem", {
+  warning_ui <- project_context_warning_ui(
+    panel_path = "/tmp/projeto-painel",
+    active_rstudio_path = "/tmp/projeto-rstudio"
+  )
+
+  html <- htmltools::renderTags(warning_ui)$html
+
+  expect_match(html, "Projeto do painel diferente do RStudio ativo.", fixed = TRUE)
+  expect_match(html, "projeto-painel", fixed = TRUE)
+  expect_match(html, "projeto-rstudio", fixed = TRUE)
+  expect_match(html, "Usar projeto ativo no RStudio", fixed = TRUE)
+})
+
+test_that("aviso de contexto nao aparece quando os projetos coincidem", {
+  expect_null(project_context_warning_ui(
+    panel_path = "/tmp/projeto",
+    active_rstudio_path = "/tmp/projeto"
+  ))
+  expect_null(project_context_warning_ui(
+    panel_path = "/tmp/projeto",
+    active_rstudio_path = NULL
+  ))
 })

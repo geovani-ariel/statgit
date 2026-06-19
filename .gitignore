@@ -5,3 +5,9 @@
 *.Rcheck
 *.tar.gz
 .DS_Store
+.Rproj.user/
+.httr-oauth
+Thumbs.db
+*.html
+*.pdf
+*.docx

@@ -10,18 +10,19 @@ Authors@R: c(
       email = "geovaniariel08@hotmail.com"
     )
   )
-Description: Um conjunto de complementos ('addins') do RStudio e uma interface
-    'Shiny' que ajudam estudantes de Estatística a usar controle de versão com
-    Git, organizar projetos a partir de modelos, formatar código com 'styler'
-    e gerar pré-visualizações de relatórios 'R Markdown' e 'Quarto'. As ações
-    são apresentadas em linguagem acessível para quem está começando.
+Description: Para uso interativo no RStudio, fornece complementos ('addins')
+    e uma interface 'Shiny' que ajudam estudantes de Estatística a trabalhar
+    com controle de versão baseado em Git, criar projetos a partir de modelos,
+    formatar código com 'styler' e gerar pré-visualizações de relatórios
+    'R Markdown' e 'Quarto'. A interface usa linguagem acessível para
+    iniciantes.
 License: GPL-3
 Encoding: UTF-8
 Language: pt-BR
 URL: https://github.com/geovani-ariel/statgit
 BugReports: https://github.com/geovani-ariel/statgit/issues
-SystemRequirements: Git, Pandoc (for R Markdown preview), Quarto (optional, for
-    .qmd preview)
+SystemRequirements: Git; Pandoc for 'R Markdown' preview; optional Quarto CLI
+    for '.qmd' preview
 Roxygen: list(markdown = TRUE)
 Depends:
     R (>= 4.1.0)

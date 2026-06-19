@@ -84,8 +84,10 @@ build_git_diagnosis <- function(path = ".") {
   git_ok <- git_installed()
   repo_remotes <- repo_remote_info(context$repo_ref)
   identity <- git_identity(context$repo_ref)
-  repo_name <- if (nrow(repo_remotes) > 0) repo_remotes$name[[1]] else NULL
-  repo_url <- if (nrow(repo_remotes) > 0) repo_remotes$url[[1]] else NULL
+  preferred_remote <- preferred_remote_name(context$repo_ref, remotes = repo_remotes)
+  preferred_remote_info <- if (!is.null(preferred_remote)) remote_by_name(context$repo_ref, remote = preferred_remote) else NULL
+  repo_name <- if (!is.null(preferred_remote_info)) preferred_remote_info$name[[1]] else NULL
+  repo_url <- if (!is.null(preferred_remote_info)) preferred_remote_info$url[[1]] else NULL
 
   diagnosis <- structure(
     list(
@@ -105,6 +107,14 @@ build_git_diagnosis <- function(path = ".") {
       remote_name = repo_name,
       remote_url = repo_url,
       remote_is_github = looks_like_github_url(repo_url),
+      sync_status = list(
+        has_upstream = FALSE,
+        upstream_branch = NULL,
+        remote_branch_exists = FALSE,
+        ahead = 0L,
+        behind = 0L,
+        can_compare = FALSE
+      ),
       status = empty_status_table(),
       status_counts = list(
         staged = 0L,
@@ -125,6 +135,11 @@ build_git_diagnosis <- function(path = ".") {
       diagnosis$has_commits <- repo_has_commits(context$repo_path)
       diagnosis$branch <- repo_current_branch(context$repo_path)
       diagnosis$has_remote <- nrow(repo_remotes) > 0
+      diagnosis$sync_status <- repo_sync_status(
+        context$repo_path,
+        remote = diagnosis$remote_name,
+        branch = diagnosis$branch
+      )
       diagnosis$status <- repo_status_table(context$repo_path)
       diagnosis$status_counts <- status_counts(diagnosis$status)
     }
@@ -160,8 +175,16 @@ next_step_message <- function(diagnosis) {
     return("Voc\u00ea j\u00e1 pode preencher a URL do GitHub na aba 'Git e GitHub'.")
   }
 
+  if (isTRUE(diagnosis$sync_status$behind > 0L)) {
+    return("Seu reposit\u00f3rio local est\u00e1 atrasado em rela\u00e7\u00e3o ao remote. Fa\u00e7a um Pull antes de continuar.")
+  }
+
   if (diagnosis$status_counts$total > 0) {
     return("Se as mudan\u00e7as estiverem corretas, fa\u00e7a um novo commit ao terminar esta etapa.")
+  }
+
+  if (isTRUE(diagnosis$sync_status$ahead > 0L)) {
+    return("Seu reposit\u00f3rio local tem commits pendentes no remote. Clique em 'Enviar Hist\u00f3rico (Push)'.")
   }
 
   if (isTRUE(diagnosis$remote_is_github)) {

@@ -1,5 +1,8 @@
 # statgit
 
+[![License: GPL-3](https://img.shields.io/badge/license-GPL--3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+
 **English version below**
 
 ---
@@ -10,23 +13,17 @@
 
 O **statgit** é um pacote R com uma interface Shiny integrada ao RStudio que ajuda estudantes de Estatística a usar controle de versão com Git de forma acessível e intuitiva, sem precisar sair do editor ou aprender comandos no terminal.
 
+Se você chegou aqui pelo GitHub ou por indicação, a ideia é simples: o **statgit** coloca dentro do RStudio um fluxo guiado para começar com Git, organizar projetos e conectar repositórios sem depender do terminal para as tarefas mais comuns.
+
 Desenvolvido com foco em **educação**, o pacote oferece:
 - **Configuração assistida** de Git e GitHub em português
 - **Painel visual** para organizar projetos, fazer commits e conectar repositórios
-- **Formação automática** de código com `styler`
-- **Pré-visualização de relatórios** em R Markdown e Quarto
+- **Formatação automática** de código com `styler`
 - **Tradução completa** da interface para português e inglês
 
 ### Por que foi criado?
 
-A ideia surgiu da observação de que muitos estudantes de Estatística encontram dificuldades ao começar a usar Git e GitHub. Os motivos são comuns:
-
-1. **Barreira de entrada**: Terminal e comandos Git parecem intimidadores para quem nunca usou
-2. **Falta de contexto educacional**: Documentação é técnica, não didática
-3. **Isolamento do fluxo de trabalho**: Alternância frequente entre RStudio e terminal quebra o ritmo
-4. **Segurança**: Copiar/colar tokens em texto aberto é uma má prática
-
-O **statgit** resolve isso colocando todas essas ferramentas dentro de um painel visual bem organizado, com mensagens em linguagem acessível, sem que o aluno tenha que abrir um terminal ou decorar sintaxe.
+O pacote foi criado para reduzir a barreira de entrada de Git e GitHub em disciplinas e projetos feitos no RStudio. Em vez de exigir comandos de terminal desde o início, ele oferece um fluxo guiado e visual para tarefas frequentes, com mensagens em linguagem acessível.
 
 ### Para quem é?
 
@@ -41,16 +38,43 @@ O **statgit** resolve isso colocando todas essas ferramentas dentro de um painel
 - **Assistentes visuais** para Git (setup), primeiro commit, conexão com GitHub
 - **Organização automática** de projetos a partir de modelos
 - **Formatação de código** integrada com `styler`
-- **Pré-visualização ao vivo** de relatórios R Markdown e Quarto
 - **Status Git traduzido** para linguagem clara e amigável
 
+### Se você quer testar rápido
+
+1. Instale o pacote
+2. Abra o RStudio
+3. Vá em `Addins`
+4. Clique em `statgit`
+5. Use a aba **Git e GitHub** para verificar Git, criar o primeiro commit e conectar um remote
+
+### Fluxo recomendado para uma primeira aula
+
+1. Abrir o painel com `Addins > statgit`
+2. Rodar o diagnóstico do Git
+3. Configurar nome e email, se necessário
+4. Inicializar Git no projeto
+5. Fazer o primeiro commit
+6. Conectar um remote GitHub
+7. Enviar o histórico com `Push`
+
 ### Instalação
+
+#### CRAN
+
+```r
+install.packages("statgit")
+```
+
+Use esse caminho quando o pacote estiver disponível no CRAN.
 
 #### Versão de desenvolvimento
 
 ```r
-devtools::install_github("geovani-ariel/statgit")
+remotes::install_github("geovani-ariel/statgit")
 ```
+
+Use esse caminho enquanto a versão do CRAN ainda não estiver disponível ou para testar mudanças recentes.
 
 #### Localmente a partir do código-fonte
 
@@ -62,10 +86,12 @@ install.packages(".", repos = NULL, type = "source")
 
 #### Pelo RStudio (recomendado)
 
-1. Instale o pacote
+1. Instale o pacote e reinicie o RStudio se necessário
 2. Vá a `Addins` no menu superior
 3. Clique em `statgit`
 4. A interface abrirá em um painel lateral
+
+Esse é o fluxo principal do pacote. As funções de console existem para uso programático ou complementar.
 
 #### Pelo console R
 
@@ -75,13 +101,13 @@ library(statgit)
 # Abre o painel principal
 statgit()
 
-# Funções individuais (também usáveis via console)
+# Funções individuais (uso programático ou complementar)
 git_check()                    # diagnóstico do Git
 git_init()                     # inicializa repositório
 git_status()                   # status em linguagem clara
 git_commit_all("Mensagem")     # commit de todos os arquivos
-git_push()                     # envia para GitHub
-github_connect("https://...")  # conecta ao remote
+git_push()                     # envia commits ao remote
+github_connect("https://...")  # conecta um remote GitHub
 project_create("nome", template = "trabalho_disciplina")  # novo projeto
 code_format_all()              # formata todo o código
 ```
@@ -104,13 +130,12 @@ O painel se organiza em 4 abas principais:
    - Ver diffs de arquivos alterados
    - Importar/criar novos arquivos
    - Formatar código com `styler`
-   - Pré-visualizar relatórios
 
 4. **Git e GitHub**
    - Wizard de configuração inicial
    - Gerenciar staging de arquivos
    - Fazer commits
-   - Conectar/desconectar do GitHub
+   - Conectar ao GitHub
    - Push e pull
 
 Todas as abas estão disponíveis em **português** e **inglês**. A escolha fica salva na sessão.
@@ -124,8 +149,6 @@ Após instalar, estes complementos aparecem em `Addins`:
 - **Configurar Git neste projeto** — wizard de setup
 - **Fazer primeiro commit** — cria o commit inicial de forma guiada
 - **Ver status Git** — mostra status em linguagem clara
-- **Pré-visualizar knit** — gera preview HTML do arquivo ativo
-- **Live preview knit** — atualiza preview automaticamente
 - **Formatar arquivo atual** — aplica `styler` ao arquivo ativo
 - **Formatar projeto atual** — aplica `styler` a todo o código
 - **Gerenciar projetos estatísticos** — localiza e abre `.Rproj`
@@ -137,21 +160,14 @@ Após instalar, estes complementos aparecem em `Addins`:
 | `statgit()` | Abre o painel principal |
 | `git_check()` | Diagnóstico didático do Git |
 | `git_init()` | Inicializa repositório com branch `main` |
-| `git_ignore()` | Cria/atualiza `.gitignore` |
 | `git_status()` | Status traduzido para linguagem clara |
-| `git_commit()` / `git_commit_all()` | Cria commits |
-| `git_changed()` | Lista arquivos alterados |
-| `git_diff()` | Mostra diff de um arquivo |
-| `git_stage()` / `git_unstage()` | Gerencia staging |
-| `git_discard()` | Descarta mudanças de um arquivo |
-| `git_push()` / `git_pull()` | Sincroniza com GitHub |
-| `github_connect()` | Conecta a um remote |
-| `github_check()` | Testa acesso ao remote |
+| `git_commit_all()` | Cria commit com todos os arquivos rastreados/preparados |
+| `git_push()` / `git_pull()` | Sincroniza com o remote configurado |
+| `github_connect()` | Conecta um remote GitHub |
+| `github_check()` | Testa acesso ao remote atual |
 | `project_create()` | Cria projeto a partir de modelo |
 | `project_organize()` | Organiza estrutura atual |
 | `code_format()` / `code_format_all()` | Formata código |
-| `report_preview()` | Preview HTML de `.Rmd` ou `.qmd` |
-| `report_live_preview()` | Preview automático ao salvar |
 
 ### Modelos de projeto
 
@@ -166,27 +182,43 @@ Use `project_create()` ou a aba de gerenciar projeto para escolher:
 
 ### Observações de segurança
 
-- Não pede tokens do GitHub em texto aberto
-- Não executa comandos destrutivos (`reset --hard`, `force push`, etc.)
-- Nunca sobrescreve arquivos existentes sem confirmação
-- Funciona com credenciais armazenadas localmente no Git
+- Não solicita tokens do GitHub em texto aberto
+- Usa as credenciais Git já configuradas localmente
+- Operações destrutivas como `reset --hard` e `force push` não fazem parte do fluxo principal
+- Não sobrescreve arquivos existentes sem confirmação
 
-### Conceitos básicos (para iniciantes)
+### Quando usar e quando não usar
 
-- **Repositório**: pasta com controle de versão Git
-- **Commit**: "fotografia" do projeto em um momento específico
-- **Branch**: ramificação do desenvolvimento (padrão: `main`)
-- **Push**: envia commits para o GitHub
-- **Pull**: baixa mudanças do GitHub
-- **Staging**: preparar arquivos antes de fazer commit
+Use o **statgit** para aprender Git dentro do RStudio, guiar estudantes no primeiro contato com controle de versão, organizar projetos acadêmicos e executar fluxos comuns como diagnóstico, commit, conexão com GitHub, `push` e `pull`.
+
+Para fluxos avançados de colaboração, resolução complexa de conflitos, reescrita de histórico, múltiplas branches de longa duração ou automações de CI/CD, use Git diretamente pelo terminal ou por uma ferramenta especializada.
+
+### Problemas comuns
+
+| Problema | O que fazer |
+| --- | --- |
+| Git não foi encontrado | Instale o Git e reabra o RStudio antes de rodar o diagnóstico novamente |
+| O GitHub pediu autenticação | Configure a autenticação local do Git/GitHub fora do pacote; o **statgit** usa essas credenciais |
+| O `push` foi rejeitado porque o remote tem commits novos | Rode `Fetch` ou `Pull`, resolva eventuais conflitos e tente enviar novamente |
+| O projeto aberto no painel não é o projeto ativo do RStudio | Use o botão de sincronização do painel ou abra explicitamente o projeto correto |
 
 ### Requisitos do sistema
 
 - R ≥ 4.1.0
-- RStudio (versão recente)
+- RStudio (necessário para a experiência principal com addins e painel)
 - Git instalado no computador
-- Pandoc (para preview de R Markdown)
-- Quarto (opcional, para preview de `.qmd`)
+- Pandoc para pré-visualização de arquivos `.Rmd`
+- Quarto opcional para pré-visualização de arquivos `.qmd`
+
+### Limitações e escopo
+
+- O pacote foi pensado para uso interativo, especialmente dentro do RStudio
+- Nem todos os fluxos avançados de Git são cobertos pela interface
+- Recursos que dependem de `shiny`, `miniUI`, `htmltools`, `styler`, `rmarkdown` ou Quarto só ficam disponíveis quando essas ferramentas estão instaladas
+
+### Sobre o criador
+
+O pacote é desenvolvido por **Geovani Ariel Bueno Paschoini**, com foco em ensino de Estatística, organização de projetos e adoção mais acessível de Git/GitHub no contexto do RStudio.
 
 ### Contribuindo
 
@@ -204,23 +236,17 @@ GPL-3 — Software livre e aberto para fins educacionais.
 
 **statgit** is an R package with a Shiny interface integrated into RStudio that helps Statistics students use version control with Git in an accessible and intuitive way, without needing to leave the editor or learn terminal commands.
 
+If you arrived here from GitHub or because someone recommended the package, the core idea is simple: **statgit** brings a guided Git workflow into RStudio so you can start with version control, organize projects, and connect repositories without relying on the terminal for common tasks.
+
 Developed with a focus on **education**, the package offers:
 - **Guided setup** of Git and GitHub with clear instructions
 - **Visual panel** to organize projects, make commits, and connect repositories
 - **Automatic code formatting** with `styler`
-- **Live preview** of R Markdown and Quarto reports
 - **Full interface translation** to Portuguese and English
 
 ### Why was it created?
 
-The idea came from observing that many Statistics students struggle when they first start using Git and GitHub. The common reasons are:
-
-1. **Steep learning curve**: Terminal and Git commands seem intimidating to beginners
-2. **Lack of educational context**: Documentation is technical, not didactic
-3. **Workflow disruption**: Frequent switching between RStudio and terminal breaks your flow
-4. **Security concerns**: Copying/pasting tokens in plain text is a bad practice
-
-**statgit** solves this by placing all these tools inside a well-organized visual panel with accessible language, so students never have to open a terminal or memorize syntax.
+The package was created to lower the entry barrier of Git and GitHub in courses and projects developed in RStudio. Instead of requiring terminal commands from day one, it provides a guided visual workflow for common tasks, with accessible messages aimed at beginners.
 
 ### Who is it for?
 
@@ -235,16 +261,43 @@ The idea came from observing that many Statistics students struggle when they fi
 - **Visual wizards** for Git setup, first commit, GitHub connection
 - **Automatic project organization** from templates
 - **Integrated code formatting** with `styler`
-- **Live preview** of R Markdown and Quarto reports
 - **Translated Git status** in clear, friendly language
 
+### If you want to try it quickly
+
+1. Install the package
+2. Open RStudio
+3. Go to `Addins`
+4. Click `statgit`
+5. Use the **Git and GitHub** tab to check Git, create the first commit, and connect a remote
+
+### Recommended first-class workflow
+
+1. Open the panel with `Addins > statgit`
+2. Run the Git diagnostic
+3. Configure name and email if needed
+4. Initialize Git in the project
+5. Create the first commit
+6. Connect a GitHub remote
+7. Send the history with `Push`
+
 ### Installation
+
+#### CRAN
+
+```r
+install.packages("statgit")
+```
+
+Use this path once the package is available on CRAN.
 
 #### Development version
 
 ```r
-devtools::install_github("geovani-ariel/statgit")
+remotes::install_github("geovani-ariel/statgit")
 ```
+
+Use this path while the CRAN version is not yet available or to test recent changes.
 
 #### Locally from source
 
@@ -256,10 +309,12 @@ install.packages(".", repos = NULL, type = "source")
 
 #### From RStudio (recommended)
 
-1. Install the package
+1. Install the package and restart RStudio if needed
 2. Go to `Addins` in the top menu
 3. Click `statgit`
 4. The interface opens in a side panel
+
+This is the main workflow of the package. Console functions are available for programmatic or complementary use.
 
 #### From the R console
 
@@ -269,13 +324,13 @@ library(statgit)
 # Open the main panel
 statgit()
 
-# Individual functions (also usable from console)
+# Individual functions (programmatic or complementary use)
 git_check()                    # Git diagnostic
 git_init()                     # initialize repository
 git_status()                   # status in clear language
 git_commit_all("Message")      # commit all files
-git_push()                     # push to GitHub
-github_connect("https://...")  # connect to remote
+git_push()                     # push commits to the remote
+github_connect("https://...")  # connect a GitHub remote
 project_create("name", template = "trabalho_disciplina")  # new project
 code_format_all()              # format all code
 ```
@@ -298,13 +353,12 @@ The panel is organized into 4 main tabs:
    - View diffs of changed files
    - Import/create new files
    - Format code with `styler`
-   - Preview reports
 
 4. **Git and GitHub**
    - Initial setup wizard
    - Manage file staging
    - Make commits
-   - Connect/disconnect from GitHub
+   - Connect to GitHub
    - Push and pull
 
 All tabs are available in **Portuguese** and **English**. The language choice is saved in your session.
@@ -318,8 +372,6 @@ After installation, these addins appear in the `Addins` menu:
 - **Configurar Git neste projeto** — setup wizard
 - **Fazer primeiro commit** — guided initial commit
 - **Ver status Git** — status in clear language
-- **Pré-visualizar knit** — HTML preview of active file
-- **Live preview knit** — auto-updates preview on save
 - **Formatar arquivo atual** — applies `styler` to active file
 - **Formatar projeto atual** — applies `styler` to all code
 - **Gerenciar projetos estatísticos** — find and open `.Rproj`
@@ -331,21 +383,14 @@ After installation, these addins appear in the `Addins` menu:
 | `statgit()` | Opens the main panel |
 | `git_check()` | Diagnostic of Git setup |
 | `git_init()` | Initialize repository with `main` branch |
-| `git_ignore()` | Create/update `.gitignore` |
 | `git_status()` | Status in clear language |
-| `git_commit()` / `git_commit_all()` | Create commits |
-| `git_changed()` | List changed files |
-| `git_diff()` | Show diff of a file |
-| `git_stage()` / `git_unstage()` | Manage staging |
-| `git_discard()` | Discard changes to a file |
-| `git_push()` / `git_pull()` | Sync with GitHub |
-| `github_connect()` | Connect to a remote |
-| `github_check()` | Test remote access |
+| `git_commit_all()` | Create a commit with tracked/staged files |
+| `git_push()` / `git_pull()` | Sync with the configured remote |
+| `github_connect()` | Connect a GitHub remote |
+| `github_check()` | Test access to the current remote |
 | `project_create()` | Create project from template |
 | `project_organize()` | Organize existing structure |
 | `code_format()` / `code_format_all()` | Format code |
-| `report_preview()` | HTML preview of `.Rmd` or `.qmd` |
-| `report_live_preview()` | Auto-preview on save |
 
 ### Project templates
 
@@ -361,26 +406,42 @@ Use `project_create()` or the manage project tab to choose:
 ### Security notes
 
 - Does not ask for GitHub tokens in plain text
-- Does not execute destructive commands (`reset --hard`, `force push`, etc.)
-- Never overwrites existing files without confirmation
-- Works with credentials stored locally in Git
+- Uses Git credentials already configured locally
+- Destructive operations such as `reset --hard` and `force push` are not part of the main workflow
+- Does not overwrite existing files without confirmation
 
-### Basic concepts (for beginners)
+### When to use it and when not to
 
-- **Repository**: folder with Git version control
-- **Commit**: "snapshot" of the project at a specific moment
-- **Branch**: development path (default: `main`)
-- **Push**: send commits to GitHub
-- **Pull**: download changes from GitHub
-- **Staging**: prepare files before committing
+Use **statgit** to learn Git inside RStudio, guide students through their first contact with version control, organize academic projects, and run common workflows such as diagnostics, commits, GitHub connection, `push`, and `pull`.
+
+For advanced collaboration workflows, complex conflict resolution, history rewriting, long-lived branch strategies, or CI/CD automation, use Git directly from the terminal or a specialized tool.
+
+### Common problems
+
+| Problem | What to do |
+| --- | --- |
+| Git was not found | Install Git and reopen RStudio before running the diagnostic again |
+| GitHub asks for authentication | Configure local Git/GitHub authentication outside the package; **statgit** uses those credentials |
+| `push` was rejected because the remote has new commits | Run `Fetch` or `Pull`, resolve any conflicts, and try pushing again |
+| The project shown in the panel is not the active RStudio project | Use the panel sync button or explicitly open the correct project |
 
 ### System requirements
 
 - R ≥ 4.1.0
-- RStudio (recent version)
+- RStudio (required for the main addin/panel experience)
 - Git installed on your computer
-- Pandoc (for R Markdown preview)
-- Quarto (optional, for `.qmd` preview)
+- Pandoc for `.Rmd` preview
+- Quarto optional for `.qmd` preview
+
+### Limitations and scope
+
+- The package is primarily designed for interactive use, especially inside RStudio
+- Not every advanced Git workflow is exposed through the interface
+- Features that depend on `shiny`, `miniUI`, `htmltools`, `styler`, `rmarkdown`, or Quarto are only available when those tools are installed
+
+### About the creator
+
+The package is developed by **Geovani Ariel Bueno Paschoini**, with a focus on Statistics education, project organization, and a more accessible adoption of Git/GitHub in the RStudio environment.
 
 ### Contributing
 

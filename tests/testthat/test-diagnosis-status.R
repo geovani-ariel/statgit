@@ -30,6 +30,28 @@ test_that("git_check detecta remote e repositorio acima da subpasta", {
   })
 })
 
+test_that("git_check inclui estado de sincronizacao da branch", {
+  with_isolated_git_identity({
+    remote_repo <- file.path(withr::local_tempdir(), "origin.git")
+    system2("git", c("init", "--bare", remote_repo))
+
+    project <- withr::local_tempdir()
+    git_init(project, branch = "main")
+    writeLines("v1", file.path(project, "analise.R"))
+    git_commit_all(path = project)
+    run_git(c("remote", "add", "origin", remote_repo), path = project)
+    git_push(project, remote = "origin")
+
+    diagnosis <- git_check(project)
+
+    expect_true(diagnosis$has_remote)
+    expect_true(diagnosis$sync_status$has_upstream)
+    expect_true(diagnosis$sync_status$remote_branch_exists)
+    expect_equal(diagnosis$sync_status$ahead, 0L)
+    expect_equal(diagnosis$sync_status$behind, 0L)
+  })
+})
+
 test_that("git_status descreve arquivos novos e modificados", {
   with_isolated_git_identity({
     project <- withr::local_tempdir()
