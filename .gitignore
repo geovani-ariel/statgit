@@ -11,3 +11,5 @@ Thumbs.db
 *.html
 *.pdf
 *.docx
+.vscode/
+.tmp-gh/

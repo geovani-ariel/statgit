@@ -13,3 +13,9 @@
 ^\.github$
 ^cran-comments\.md$
 ^README\.Rmd$
+^kickbacks\.vsix$
+^reports$
+^reports/.*
+^scripts$
+^scripts/.*
+^\.vscode$
