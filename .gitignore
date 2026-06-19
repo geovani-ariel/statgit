@@ -13,3 +13,4 @@ Thumbs.db
 *.docx
 .vscode/
 .tmp-gh/
+.gh-artifacts/

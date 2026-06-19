@@ -30,3 +30,12 @@ with_isolated_git_home <- function(code) {
 
   force(code)
 }
+
+set_bare_repo_head <- function(path, branch = "main") {
+  status <- system2(
+    "git",
+    c("--git-dir", path, "symbolic-ref", "HEAD", sprintf("refs/heads/%s", branch))
+  )
+
+  testthat::expect_equal(status, 0L)
+}

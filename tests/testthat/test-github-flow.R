@@ -297,13 +297,14 @@ test_that("git_fetch busca atualizações do remote sem alterar a branch local",
     git_commit_all(path = project)
     run_git(c("remote", "add", "origin", remote_repo), path = project)
     git_push(project, remote = "origin")
+    set_bare_repo_head(remote_repo)
 
     collaborator <- file.path(withr::local_tempdir(), "collaborator")
-    system2("git", c("clone", remote_repo, collaborator))
+    expect_equal(system2("git", c("clone", "--branch", "main", remote_repo, collaborator)), 0L)
     writeLines("v2", file.path(collaborator, "analise.R"))
     run_git(c("add", "analise.R"), path = collaborator)
     run_git(c("commit", "-m", "Atualiza remoto"), path = collaborator)
-    run_git(c("push", "origin", "main"), path = collaborator)
+    expect_equal(run_git(c("push", "origin", "main"), path = collaborator)$status, 0L)
 
     result <- git_fetch(project, remote = "origin")
     sync_status <- repo_sync_status(project, remote = "origin", branch = "main")
@@ -325,16 +326,17 @@ test_that("git_pull sinaliza conflito de rebase quando remoto e local divergem n
     git_commit_all(path = seed)
     run_git(c("remote", "add", "origin", remote_repo), path = seed)
     git_push(seed, remote = "origin")
+    set_bare_repo_head(remote_repo)
 
     project <- file.path(withr::local_tempdir(), "project")
     collaborator <- file.path(withr::local_tempdir(), "collaborator")
-    system2("git", c("clone", remote_repo, project))
-    system2("git", c("clone", remote_repo, collaborator))
+    expect_equal(system2("git", c("clone", "--branch", "main", remote_repo, project)), 0L)
+    expect_equal(system2("git", c("clone", "--branch", "main", remote_repo, collaborator)), 0L)
 
     writeLines("mudanca-remota", file.path(collaborator, "analise.R"))
     run_git(c("add", "analise.R"), path = collaborator)
     run_git(c("commit", "-m", "Atualiza remoto"), path = collaborator)
-    run_git(c("push", "origin", "main"), path = collaborator)
+    expect_equal(run_git(c("push", "origin", "main"), path = collaborator)$status, 0L)
 
     writeLines("mudanca-local", file.path(project, "analise.R"))
     run_git(c("add", "analise.R"), path = project)
@@ -361,16 +363,17 @@ test_that("git_sync sinaliza rebase em andamento quando pull entra em conflito",
     git_commit_all(path = seed)
     run_git(c("remote", "add", "origin", remote_repo), path = seed)
     git_push(seed, remote = "origin")
+    set_bare_repo_head(remote_repo)
 
     project <- file.path(withr::local_tempdir(), "project")
     collaborator <- file.path(withr::local_tempdir(), "collaborator")
-    system2("git", c("clone", remote_repo, project))
-    system2("git", c("clone", remote_repo, collaborator))
+    expect_equal(system2("git", c("clone", "--branch", "main", remote_repo, project)), 0L)
+    expect_equal(system2("git", c("clone", "--branch", "main", remote_repo, collaborator)), 0L)
 
     writeLines("mudanca-remota", file.path(collaborator, "analise.R"))
     run_git(c("add", "analise.R"), path = collaborator)
     run_git(c("commit", "-m", "Atualiza remoto"), path = collaborator)
-    run_git(c("push", "origin", "main"), path = collaborator)
+    expect_equal(run_git(c("push", "origin", "main"), path = collaborator)$status, 0L)
 
     writeLines("mudanca-local", file.path(project, "analise.R"))
     run_git(c("add", "analise.R"), path = project)
@@ -524,13 +527,14 @@ test_that("repo_sync_status detecta branch atras da remota e git_push bloqueia",
     git_commit_all(path = project)
     run_git(c("remote", "add", "origin", remote_repo), path = project)
     git_push(project, remote = "origin")
+    set_bare_repo_head(remote_repo)
 
     collaborator <- file.path(withr::local_tempdir(), "collaborator")
-    system2("git", c("clone", remote_repo, collaborator))
+    expect_equal(system2("git", c("clone", "--branch", "main", remote_repo, collaborator)), 0L)
     writeLines("v2", file.path(collaborator, "analise.R"))
     run_git(c("add", "analise.R"), path = collaborator)
     run_git(c("commit", "-m", "Atualiza remoto"), path = collaborator)
-    run_git(c("push", "origin", "main"), path = collaborator)
+    expect_equal(run_git(c("push", "origin", "main"), path = collaborator)$status, 0L)
 
     run_git(c("fetch", "origin"), path = project)
 
