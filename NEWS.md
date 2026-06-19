@@ -1,12 +1,12 @@
 # statgit 0.1.0
 
-* Primeira versão do statgit.
-* Painel principal (`statgit()`) com abas para visão geral, gerenciamento de
-  projeto, arquivos e código, e Git/GitHub.
-* Complementos ('addins') do RStudio para verificar e configurar Git, fazer o
-  primeiro commit, ver o status, formatar código e pré-visualizar relatórios.
-* Funções de console para controle de versão (`git_init()`, `git_commit()`,
-  `git_status()`, `git_push()`, entre outras), criação de projetos a partir de
-  modelos (`project_create()`), formatação com 'styler' (`code_format()`) e
-  pré-visualização de relatórios 'R Markdown' e 'Quarto' (`report_preview()`).
-* Interface disponível em português e inglês.
+* First release of statgit.
+* Main panel (`statgit()`) with tabs for overview, project management, files
+  and code, and Git/GitHub.
+* RStudio addins for checking and configuring Git, creating the first commit,
+  viewing status, formatting code, and previewing reports.
+* Console functions for version control (`git_init()`, `git_commit()`,
+  `git_status()`, `git_push()`, among others), project creation from templates
+  (`project_create()`), formatting with 'styler' (`code_format()`), and
+  previewing 'R Markdown' and 'Quarto' reports (`report_preview()`).
+* Interface available in Portuguese and English.

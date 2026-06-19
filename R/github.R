@@ -218,14 +218,15 @@ github_repo_browse_url <- function(remote_url) {
   NULL
 }
 
-#' Abre o repositório GitHub configurado no navegador
+#' Open the configured GitHub repository in a browser
 #'
-#' Converte a URL do remote em uma URL web navegável e abre no navegador padrão.
+#' Converts the remote URL into a browsable web URL and opens it in the
+#' default browser.
 #'
-#' @param path Caminho do projeto.
-#' @param remote Nome do remote.
+#' @param path Project path.
+#' @param remote Remote name.
 #'
-#' @return Uma lista com o resultado da operação.
+#' @return A list with the operation result.
 #' @export
 github_open_repo <- function(path = ".", remote = "origin") {
   project_path <- normalize_project_path(path)
@@ -270,14 +271,14 @@ github_open_repo <- function(path = ".", remote = "origin") {
   ))
 }
 
-#' Busca atualizações do remote sem alterar a branch local
+#' Fetch remote updates without changing the local branch
 #'
-#' Executa `git fetch --prune` para atualizar as referências remotas.
+#' Runs `git fetch --prune` to update remote references.
 #'
-#' @param path Caminho do projeto.
-#' @param remote Nome do remote.
+#' @param path Project path.
+#' @param remote Remote name.
 #'
-#' @return Uma lista com o resultado da operação.
+#' @return A list with the operation result.
 #' @export
 git_fetch <- function(path = ".", remote = "origin") {
   project_path <- normalize_project_path(path)
@@ -339,14 +340,15 @@ clone_target_name <- function(remote_url) {
   name
 }
 
-#' Clona um repositório Git em uma pasta local
+#' Clone a Git repository into a local directory
 #'
-#' @param remote_url URL ou caminho do repositório remoto.
-#' @param path Pasta base onde o clone será criado.
-#' @param directory Nome opcional da pasta de destino.
-#' @param open Se `TRUE`, tenta abrir o projeto clonado no RStudio ao final.
+#' @param remote_url URL or path of the remote repository.
+#' @param path Base directory where the clone will be created.
+#' @param directory Optional target directory name.
+#' @param open If `TRUE`, tries to open the cloned project in RStudio at the
+#'   end.
 #'
-#' @return Uma lista com o resultado da operação.
+#' @return A list with the operation result.
 #' @export
 git_clone_repo <- function(remote_url, path = ".", directory = NULL, open = FALSE) {
   base_path <- normalize_project_path(path)

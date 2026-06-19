@@ -36,6 +36,7 @@ O pacote foi criado para reduzir a barreira de entrada de Git e GitHub em discip
 - **Painel unificado** para todas as ações (visão geral, gerenciar projeto, arquivos, Git e GitHub)
 - **Seleção de idioma** em português e inglês
 - **Assistentes visuais** para Git (setup), primeiro commit, conexão com GitHub
+- **Visualização de diffs** dentro do RStudio para inspecionar mudanças de arquivos sem depender de ferramentas externas
 - **Organização automática** de projetos a partir de modelos
 - **Formatação de código** integrada com `styler`
 - **Status Git traduzido** para linguagem clara e amigável
@@ -230,8 +231,6 @@ GPL-3 — Software livre e aberto para fins educacionais.
 
 ---
 
-## 🇺🇸 English
-
 ### Overview
 
 **statgit** is an R package with a Shiny interface integrated into RStudio that helps Statistics students use version control with Git in an accessible and intuitive way, without needing to leave the editor or learn terminal commands.
@@ -259,6 +258,7 @@ The package was created to lower the entry barrier of Git and GitHub in courses 
 - **Unified panel** for all actions (overview, manage project, files, Git and GitHub)
 - **Language selection** in Portuguese and English
 - **Visual wizards** for Git setup, first commit, GitHub connection
+- **Diff visualization** inside RStudio so file changes can be inspected without relying on external tools
 - **Automatic project organization** from templates
 - **Integrated code formatting** with `styler`
 - **Translated Git status** in clear, friendly language

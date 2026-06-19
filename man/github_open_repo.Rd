@@ -2,18 +2,18 @@
 % Please edit documentation in R/github.R
 \name{github_open_repo}
 \alias{github_open_repo}
-\title{Abre o repositório GitHub configurado no navegador}
+\title{Open the configured GitHub repository in a browser}
 \usage{
 github_open_repo(path = ".", remote = "origin")
 }
 \arguments{
-\item{path}{Caminho do projeto.}
+\item{path}{Project path.}
 
-\item{remote}{Nome do remote.}
+\item{remote}{Remote name.}
 }
 \value{
-Uma lista com o resultado da operação.
+A list with the operation result.
 }
 \description{
-Converte a URL do remote em uma URL web navegável e abre no navegador padrão.
+Converts the remote URL into a browsable web URL and opens it in the default browser.
 }

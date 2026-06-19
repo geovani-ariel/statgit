@@ -2,22 +2,22 @@
 % Please edit documentation in R/github.R
 \name{git_clone_repo}
 \alias{git_clone_repo}
-\title{Clona um repositório Git em uma pasta local}
+\title{Clone a Git repository into a local directory}
 \usage{
 git_clone_repo(remote_url, path = ".", directory = NULL, open = FALSE)
 }
 \arguments{
-\item{remote_url}{URL ou caminho do repositório remoto.}
+\item{remote_url}{URL or path of the remote repository.}
 
-\item{path}{Pasta base onde o clone será criado.}
+\item{path}{Base directory where the clone will be created.}
 
-\item{directory}{Nome opcional da pasta de destino.}
+\item{directory}{Optional target directory name.}
 
-\item{open}{Se \code{TRUE}, tenta abrir o projeto clonado no RStudio ao final.}
+\item{open}{If \code{TRUE}, tries to open the cloned project in RStudio at the end.}
 }
 \value{
-Uma lista com o resultado da operação.
+A list with the operation result.
 }
 \description{
-Clona um repositório Git em uma pasta local
+Clone a Git repository into a local directory
 }

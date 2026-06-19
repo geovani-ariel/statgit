@@ -24,15 +24,7 @@ Local `R CMD check --as-cran` results:
 
 Expected for a first submission. No previous version on CRAN.
 
-### 2. Title field not in title case / Language is pt-BR
-
-The Title field is written in Portuguese (`Language: pt-BR` in `DESCRIPTION`).
-Portuguese grammar uses lowercase for prepositions and articles, so
-"Controle de Versão e Gerenciamento de Projetos de Estatística no RStudio"
-is correctly cased. The automated English title-case suggestion does not apply
-to Portuguese text.
-
-### 3. Repository URL
+### 2. Repository URL
 
 The package URL and BugReports entries point to
 <https://github.com/geovani-ariel/statgit> and

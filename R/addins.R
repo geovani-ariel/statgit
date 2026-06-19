@@ -241,7 +241,7 @@ git_wizard_server <- function(project_path) {
           ok = d$has_remote
         ),
         wizard_step_note(
-          "Sincronização",
+          "Sincroniza\u00E7\u00E3o",
           wizard_sync_note(d),
           ok = isTRUE(d$has_remote) && !isTRUE(d$sync_status$behind > 0L)
         )
@@ -299,7 +299,7 @@ git_wizard_server <- function(project_path) {
         return(NULL)
       }
 
-      shiny::actionButton("open_remote_repo", "Abrir repositório", class = "btn-default")
+      shiny::actionButton("open_remote_repo", "Abrir reposit\u00F3rio", class = "btn-default")
     })
 
     output$fetch_button <- shiny::renderUI({

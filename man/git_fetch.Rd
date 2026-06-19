@@ -2,18 +2,18 @@
 % Please edit documentation in R/github.R
 \name{git_fetch}
 \alias{git_fetch}
-\title{Busca atualizações do remote sem alterar a branch local}
+\title{Fetch remote updates without changing the local branch}
 \usage{
 git_fetch(path = ".", remote = "origin")
 }
 \arguments{
-\item{path}{Caminho do projeto.}
+\item{path}{Project path.}
 
-\item{remote}{Nome do remote.}
+\item{remote}{Remote name.}
 }
 \value{
-Uma lista com o resultado da operação.
+A list with the operation result.
 }
 \description{
-Executa \verb{git fetch --prune} para atualizar as referências remotas.
+Runs \verb{git fetch --prune} to update remote references.
 }

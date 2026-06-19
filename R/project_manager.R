@@ -116,12 +116,12 @@ project_manager_addin <- function() {
           shiny::verbatimTextOutput("open_result")
         ),
         shiny::div(
-          shiny::h4("Clonar repositório"),
-          shiny::textInput("clone_url", "URL do repositório", value = ""),
+          shiny::h4("Clonar reposit\u00F3rio"),
+          shiny::textInput("clone_url", "URL do reposit\u00F3rio", value = ""),
           shiny::textInput("clone_base_dir", tr("project.base_dir"), value = default_projects_directory()),
           shiny::textInput("clone_dir", "Nome da pasta clonada (opcional)", value = ""),
           shiny::checkboxInput("clone_open_after", tr("project.open_after_create"), value = TRUE),
-          shiny::actionButton("clone_project", "Clonar repositório"),
+          shiny::actionButton("clone_project", "Clonar reposit\u00F3rio"),
           shiny::verbatimTextOutput("clone_result")
         )
       )

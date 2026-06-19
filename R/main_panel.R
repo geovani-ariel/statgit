@@ -147,7 +147,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
 
     refresh_diagnosis <- function(update_inputs = FALSE) {
       current <- build_git_diagnosis(current_panel_path())
-      previous <- isolate(diagnosis_state())
+      previous <- shiny::isolate(diagnosis_state())
       changed <- !identical(current, previous)
 
       if (changed) {
@@ -197,14 +197,14 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
 
       if (identical(open_result$reason, "multiple_rproj")) {
         return(list(
-          message = "Clone concluído. Há mais de um .Rproj; escolha manualmente qual projeto abrir.",
+          message = "Clone conclu\u00EDdo. H\u00E1 mais de um .Rproj; escolha manualmente qual projeto abrir.",
           type = "warning"
         ))
       }
 
       if (identical(open_result$reason, "missing_rproj")) {
         return(list(
-          message = "Clone concluído. Nenhum .Rproj foi encontrado; abra a pasta clonada ou crie um projeto nela.",
+          message = "Clone conclu\u00EDdo. Nenhum .Rproj foi encontrado; abra a pasta clonada ou crie um projeto nela.",
           type = "message"
         ))
       }
@@ -245,7 +245,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
 
     d <- shiny::reactive(diagnosis_state())
     requested_remote_name <- function() {
-      diagnosis <- isolate(diagnosis_state())
+      diagnosis <- shiny::isolate(diagnosis_state())
       normalize_remote_name(
         input$github_remote_name,
         default = diagnosis$remote_name %||% "origin"
@@ -253,7 +253,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
     }
 
     current_remote_name <- function() {
-      diagnosis <- isolate(diagnosis_state())
+      diagnosis <- shiny::isolate(diagnosis_state())
 
       if (isTRUE(diagnosis$has_remote) && !is.null(diagnosis$remote_name)) {
         return(diagnosis$remote_name)
@@ -564,7 +564,7 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
     shiny::observeEvent(input$project_clone, {
       remote_url <- trimws(input$project_clone_url %||% "")
       if (!nzchar(remote_url)) {
-        shiny::showNotification("Informe a URL do repositório para clonar.", type = "error")
+        shiny::showNotification("Informe a URL do reposit\u00F3rio para clonar.", type = "error")
         return()
       }
 
@@ -1192,7 +1192,7 @@ project_module_ui <- function() {
           shiny::div(
             style = "display: flex; flex-direction: column; gap: 15px;",
             shiny::div(
-              shiny::tags$label("URL do repositório", style = "font-weight: 600; font-size: 14px; margin-bottom: 6px; display: block; color: #EDEDED;"),
+              shiny::tags$label("URL do reposit\u00F3rio", style = "font-weight: 600; font-size: 14px; margin-bottom: 6px; display: block; color: #EDEDED;"),
               shiny::textInput("project_clone_url", label = NULL, value = "", width = "100%", placeholder = "Ex: https://github.com/usuario/projeto.git")
             ),
             shiny::div(
@@ -1206,11 +1206,11 @@ project_module_ui <- function() {
                 shiny::actionButton("project_choose_clone_base", "Procurar...")
               )
             ),
-            shiny::textInput("project_clone_dir", "Nome da pasta clonada (opcional)", value = "", placeholder = "Se vazio, usa o nome do repositório"),
-            shiny::checkboxInput("project_clone_open_after", "Abrir projeto clonado se houver .Rproj único", value = TRUE),
+            shiny::textInput("project_clone_dir", "Nome da pasta clonada (opcional)", value = "", placeholder = "Se vazio, usa o nome do reposit\u00F3rio"),
+            shiny::checkboxInput("project_clone_open_after", "Abrir projeto clonado se houver .Rproj \u00FAnico", value = TRUE),
             shiny::div(
               style = "margin-top: 20px;",
-              shiny::actionButton("project_clone", "Clonar repositório", class = "btn-primary", style = "width: 100%; font-weight: 600; font-size: 15px; height: 42px !important;")
+              shiny::actionButton("project_clone", "Clonar reposit\u00F3rio", class = "btn-primary", style = "width: 100%; font-weight: 600; font-size: 15px; height: 42px !important;")
             )
           ),
           shiny::div(
@@ -1218,9 +1218,9 @@ project_module_ui <- function() {
             shiny::h5("O que acontece no clone", style = "margin-top: 0; margin-bottom: 12px; font-weight: 600; color: #EDEDED;"),
             shiny::tags$ul(
               style = "padding-left: 18px; margin: 0; color: #D4D4D8; font-size: 13px; line-height: 1.6;",
-              shiny::tags$li("Baixa o repositório remoto para a pasta escolhida."),
-              shiny::tags$li("Mantém o histórico Git e o remote configurado."),
-              shiny::tags$li("Se houver um único arquivo .Rproj, o pacote pode tentar abrir o projeto ao final.")
+              shiny::tags$li("Baixa o reposit\u00F3rio remoto para a pasta escolhida."),
+              shiny::tags$li("Mant\u00E9m o hist\u00F3rico Git e o remote configurado."),
+              shiny::tags$li("Se houver um \u00FAnico arquivo .Rproj, o pacote pode tentar abrir o projeto ao final.")
             )
           )
         )
@@ -1520,8 +1520,8 @@ git_next_action_ui <- function(diagnosis, remote_name, remote_url, remote_protoc
       message = sprintf("Seu reposit\u00F3rio local est\u00E1 %d commit(s) atr\u00E1s do remote.", sync_status$behind),
       body = shiny::div(
         class = "tr-git-action-row",
-        panel_action_button("github_open_repo", "Abrir repositório", enabled = has_remote_url, class = "btn-default", tooltip = "Abre a página do repositório no navegador"),
-        panel_action_button("github_fetch", "Fetch", enabled = diagnosis$has_remote, class = "btn-default", tooltip = "Busca atualizações do remote sem alterar sua branch local"),
+        panel_action_button("github_open_repo", "Abrir reposit\u00F3rio", enabled = has_remote_url, class = "btn-default", tooltip = "Abre a p\u00E1gina do reposit\u00F3rio no navegador"),
+        panel_action_button("github_fetch", "Fetch", enabled = diagnosis$has_remote, class = "btn-default", tooltip = "Busca atualiza\u00E7\u00F5es do remote sem alterar sua branch local"),
         panel_action_button("github_pull", "Pull", enabled = diagnosis$has_remote, class = "btn-primary", tooltip = "Baixa as mudan\u00E7as do GitHub antes de continuar"),
         panel_action_button("github_sync", "Pull + Push", enabled = push_enabled, class = "btn-default", tooltip = "Atualiza e tenta sincronizar em uma s\u00F3 a\u00E7\u00E3o")
       )
@@ -1539,8 +1539,8 @@ git_next_action_ui <- function(diagnosis, remote_name, remote_url, remote_protoc
       ),
       shiny::div(
         class = "tr-git-action-row",
-        panel_action_button("github_open_repo", "Abrir repositório", enabled = has_remote_url, class = "btn-default", tooltip = "Abre a página do repositório no navegador"),
-        panel_action_button("github_fetch", "Fetch", enabled = diagnosis$has_remote, class = "btn-default", tooltip = "Busca atualizações do remote sem alterar sua branch local"),
+        panel_action_button("github_open_repo", "Abrir reposit\u00F3rio", enabled = has_remote_url, class = "btn-default", tooltip = "Abre a p\u00E1gina do reposit\u00F3rio no navegador"),
+        panel_action_button("github_fetch", "Fetch", enabled = diagnosis$has_remote, class = "btn-default", tooltip = "Busca atualiza\u00E7\u00F5es do remote sem alterar sua branch local"),
         panel_action_button("github_pull", "Pull", enabled = diagnosis$has_remote, class = "btn-default", tooltip = "Baixa as mudan\u00E7as do GitHub"),
         panel_action_button("github_push", "Push", enabled = push_enabled, class = "btn-primary", tooltip = "Envia seus commits para o GitHub"),
         panel_action_button("github_sync", "Pull + Push", enabled = push_enabled, class = "btn-default", tooltip = "Baixa e envia mudan\u00E7as em uma s\u00F3 a\u00E7\u00E3o")
@@ -1627,7 +1627,7 @@ git_config_rows_ui <- function(diagnosis, remote_name, remote_url, remote_protoc
           shiny::div(
             class = "tr-git-action-row",
             panel_action_button("github_connect", if (has_remote_url) "Reconectar / atualizar remote" else "Conectar remote", enabled = TRUE, class = "btn-primary", tooltip = "Configura a conex\u00E3o com o reposit\u00F3rio do GitHub"),
-            panel_action_button("github_open_repo", "Abrir repositório", enabled = has_remote_url, class = "btn-default", tooltip = "Abre a página do repositório no navegador"),
+            panel_action_button("github_open_repo", "Abrir reposit\u00F3rio", enabled = has_remote_url, class = "btn-default", tooltip = "Abre a p\u00E1gina do reposit\u00F3rio no navegador"),
             panel_action_button("github_disconnect", "Desconectar remote", enabled = has_remote_url, class = "btn-default", tooltip = "Remove a conex\u00E3o com o reposit\u00F3rio GitHub sem apagar o hist\u00F3rico local")
           )
         )

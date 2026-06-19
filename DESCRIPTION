@@ -1,6 +1,6 @@
 Package: statgit
 Type: Package
-Title: Controle de Versão e Gerenciamento de Projetos de Estatística no RStudio
+Title: Version Control and Project Management for Statistics in RStudio
 Version: 0.1.0
 Authors@R: c(
     person(
@@ -10,15 +10,14 @@ Authors@R: c(
       email = "geovaniariel08@hotmail.com"
     )
   )
-Description: Para uso interativo no RStudio, fornece complementos ('addins')
-    e uma interface 'Shiny' que ajudam estudantes de Estatística a trabalhar
-    com controle de versão baseado em Git, criar projetos a partir de modelos,
-    formatar código com 'styler' e gerar pré-visualizações de relatórios
-    'R Markdown' e 'Quarto'. A interface usa linguagem acessível para
-    iniciantes.
+Description: For interactive use in RStudio, provides addins and a 'Shiny'
+    interface that help Statistics students work with Git-based version
+    control, create projects from templates, format code with 'styler', and
+    preview 'R Markdown' and 'Quarto' reports. The interface uses accessible
+    language for beginners and supports both Portuguese and English.
 License: GPL-3
 Encoding: UTF-8
-Language: pt-BR
+Language: en-US
 URL: https://github.com/geovani-ariel/statgit
 BugReports: https://github.com/geovani-ariel/statgit/issues
 SystemRequirements: Git; Pandoc for 'R Markdown' preview; optional Quarto CLI
