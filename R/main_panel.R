@@ -1,4 +1,4 @@
-#' Abre o painel principal do trackR
+#' Abre o painel principal do statgit
 #'
 #' Centraliza as acoes do pacote em uma interface Shiny com navegacao por
 #' modulos.
@@ -7,7 +7,7 @@
 #'
 #' @return Invisivelmente, o caminho analisado.
 #' @export
-trackR <- function(path = active_project_path()) {
+statgit <- function(path = active_project_path()) {
   ensure_suggested_package("shiny", "o painel principal")
   ensure_suggested_package("miniUI", "o painel principal")
 
@@ -887,6 +887,14 @@ trackR_panel_server <- function(project_path, initial_diagnosis = NULL) {
       shiny::stopApp(invisible(NULL))
     })
   }
+}
+
+statgit_panel_ui <- function(project_path, default_module = "project") {
+  trackR_panel_ui(project_path, default_module = default_module)
+}
+
+statgit_panel_server <- function(project_path, initial_diagnosis = NULL) {
+  trackR_panel_server(project_path, initial_diagnosis = initial_diagnosis)
 }
 
 project_module_ui <- function() {
@@ -2457,8 +2465,6 @@ file_actions_panel_ui <- function(path, diagnosis, selected = "") {
 
 trackR_panel_css <- function() {
   "
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-
   /* Design tokens for consistency */
   :root {
     --gap-xs: 8px;
@@ -2475,7 +2481,7 @@ trackR_panel_css <- function() {
     background-color: #0D0D0D;
   }
   body, .tr-shell {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     color: #EDEDED;
   }
   .tr-shell {

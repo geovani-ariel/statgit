@@ -1,7 +1,7 @@
 # statgit 0.1.0
 
 * Primeira versão do statgit.
-* Painel principal (`trackR()`) com abas para visão geral, gerenciamento de
+* Painel principal (`statgit()`) com abas para visão geral, gerenciamento de
   projeto, arquivos e código, e Git/GitHub.
 * Complementos ('addins') do RStudio para verificar e configurar Git, fazer o
   primeiro commit, ver o status, formatar código e pré-visualizar relatórios.
