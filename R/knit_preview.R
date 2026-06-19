@@ -285,10 +285,11 @@ start_rmarkdown_live_preview <- function(path, style = FALSE, interval_ms = 1500
   initial_output <- render_live_preview_document(path, output_dir, style = style)
 
   ui <- miniUI::miniPage(
-    miniUI::gadgetTitleBar("trackR: live preview"),
+    miniUI::gadgetTitleBar("statgit"),
     miniUI::miniContentPanel(
       shiny::fillCol(
-        flex = c(0, 1),
+        flex = c(0, 0, 1),
+        shiny::selectInput("trackr_language", NULL, choices = trackr_language_choices(), selected = "en", width = "100%"),
         shiny::wellPanel(
           shiny::strong(basename(path)),
           shiny::tags$br(),
@@ -305,15 +306,23 @@ start_rmarkdown_live_preview <- function(path, style = FALSE, interval_ms = 1500
   )
 
   server <- function(input, output, session) {
+    language <- shiny::reactive(input$trackr_language %||% "en")
+    tr <- trackr_tr(language)
     values <- shiny::reactiveValues(
       output_path = initial_output,
       last_mtime = file_mtime_token(path),
       last_render = Sys.time(),
-      status = "Aguardando alteracoes no arquivo salvo.",
+      status_key = "live.waiting",
       error = ""
     )
 
-    output$live_status <- shiny::renderText(values$status)
+    output$live_status <- shiny::renderText({
+      if (identical(values$status_key, "live.updated")) {
+        paste(tr("live.updated"), format(values$last_render, "%H:%M:%S"))
+      } else {
+        tr(values$status_key)
+      }
+    })
     output$live_error <- shiny::renderText(values$error)
 
     output$live_frame <- shiny::renderUI({
@@ -332,7 +341,7 @@ start_rmarkdown_live_preview <- function(path, style = FALSE, interval_ms = 1500
       }
 
       values$last_mtime <- current_mtime
-      values$status <- "Alteracao detectada. Atualizando preview..."
+      values$status_key <- "live.detected"
 
       refreshed <- tryCatch(
         render_live_preview_document(path, output_dir, style = style),
@@ -341,17 +350,14 @@ start_rmarkdown_live_preview <- function(path, style = FALSE, interval_ms = 1500
 
       if (inherits(refreshed, "error")) {
         values$error <- conditionMessage(refreshed)
-        values$status <- "Falha ao atualizar. Corrija o arquivo e salve novamente."
+        values$status_key <- "live.failed"
         return()
       }
 
       values$output_path <- refreshed
       values$last_render <- Sys.time()
       values$error <- ""
-      values$status <- paste(
-        "Preview atualizado em",
-        format(values$last_render, "%H:%M:%S")
-      )
+      values$status_key <- "live.updated"
     }
 
     shiny::observe({
@@ -375,7 +381,7 @@ start_rmarkdown_live_preview <- function(path, style = FALSE, interval_ms = 1500
   result <- shiny::runGadget(
     ui,
     server = server,
-    viewer = shiny::dialogViewer("trackR")
+    viewer = shiny::dialogViewer("statgit")
   )
 
   invisible(result %||% list(

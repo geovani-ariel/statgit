@@ -1,8 +1,8 @@
-test_that("git_setup_wizard_server inicializa sem contexto reativo ativo", {
+test_that("git_wizard_server inicializa sem contexto reativo ativo", {
   skip_if_not_installed("shiny")
 
   project <- withr::local_tempdir()
-  server <- git_setup_wizard_server(project)
+  server <- git_wizard_server(project)
 
   expect_no_error(
     shiny::testServer(server, {

@@ -1,9 +1,9 @@
-test_that("use_stats_project cria a estrutura básica sem sobrescrever README existente", {
+test_that("project_organize cria a estrutura básica sem sobrescrever README existente", {
   project <- withr::local_tempdir()
   readme_path <- file.path(project, "README.md")
   writeLines("README existente", readme_path)
 
-  result <- use_stats_project(project, include_data = TRUE)
+  result <- project_organize(project, include_data = TRUE)
 
   expect_true(all(dir.exists(file.path(project, c(
     "R", "scripts", "data", "data/raw", "data/processed", "reports", "figs"
@@ -12,19 +12,19 @@ test_that("use_stats_project cria a estrutura básica sem sobrescrever README ex
   expect_false("README.md" %in% result$created_files)
 })
 
-test_that("use_stats_project cria READMEs de dados quando include_data é FALSE", {
+test_that("project_organize cria READMEs de dados quando include_data é FALSE", {
   project <- withr::local_tempdir()
 
-  use_stats_project(project, include_data = FALSE)
+  project_organize(project, include_data = FALSE)
 
   expect_true(file.exists(file.path(project, "data/raw/README.md")))
   expect_true(file.exists(file.path(project, "data/processed/README.md")))
 })
 
-test_that("use_stats_project cria arquivos do template artigo_quarto", {
+test_that("project_organize cria arquivos do template artigo_quarto", {
   project <- withr::local_tempdir()
 
-  result <- use_stats_project(project, template = "artigo_quarto", include_data = TRUE)
+  result <- project_organize(project, template = "artigo_quarto", include_data = TRUE)
 
   expect_equal(result$template, "artigo_quarto")
   expect_true(file.exists(file.path(project, "_quarto.yml")))
@@ -32,10 +32,10 @@ test_that("use_stats_project cria arquivos do template artigo_quarto", {
   expect_true(file.exists(file.path(project, "refs.bib")))
 })
 
-test_that("create_stats_project cria .Rproj, .gitignore e arquivos extras", {
+test_that("project_create cria .Rproj, .gitignore e arquivos extras", {
   project <- file.path(withr::local_tempdir(), "meu-estudo")
 
-  result <- create_stats_project(
+  result <- project_create(
     path = project,
     template = "projeto_grupo",
     include_data = FALSE,
@@ -54,11 +54,11 @@ test_that("create_stats_project cria .Rproj, .gitignore e arquivos extras", {
   expect_true(file.exists(file.path(project, "data/processed/README.md")))
 })
 
-test_that("create_stats_project rejeita arquivos extras fora do projeto", {
+test_that("project_create rejeita arquivos extras fora do projeto", {
   project <- file.path(withr::local_tempdir(), "meu-estudo")
 
   expect_error(
-    create_stats_project(project, extra_files = "../fora.txt"),
+    project_create(project, extra_files = "../fora.txt"),
     "caminhos relativos dentro do projeto"
   )
 })

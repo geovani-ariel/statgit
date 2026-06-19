@@ -1,8 +1,8 @@
-test_that("git4stats_panel_server inicializa com diagnostico e log", {
+test_that("statgit_panel_server inicializa com diagnostico e log", {
   skip_if_not_installed("shiny")
 
   project <- withr::local_tempdir()
-  server <- git4stats_panel_server(project)
+  server <- statgit_panel_server(project)
 
   expect_no_error(
     shiny::testServer(server, {
@@ -17,7 +17,7 @@ test_that("painel atualiza diagnostico pela acao de Git", {
   skip_if_not_installed("shiny")
 
   project <- withr::local_tempdir()
-  server <- git4stats_panel_server(project)
+  server <- statgit_panel_server(project)
 
   shiny::testServer(server, {
     session$setInputs(git_diagnose = 1)
@@ -31,10 +31,10 @@ test_that("painel cria projeto usando inputs da UI", {
 
   project <- withr::local_tempdir()
   created <- NULL
-  server <- git4stats_panel_server(project)
+  server <- statgit_panel_server(project)
 
   testthat::local_mocked_bindings(
-    create_stats_project = function(path, template, include_data, initialize_git, open, extra_files) {
+    project_create = function(path, template, include_data, initialize_git, open, extra_files) {
       created <<- list(
         path = as.character(path),
         template = template,
@@ -73,44 +73,29 @@ test_that("painel cria projeto usando inputs da UI", {
   })
 })
 
-test_that("painel chama preview e formatacao pelos motores existentes", {
+test_that("painel chama formatacao pelos motores existentes", {
   skip_if_not_installed("shiny")
 
   project <- withr::local_tempdir()
   calls <- list()
-  server <- git4stats_panel_server(project)
+  server <- statgit_panel_server(project)
 
   testthat::local_mocked_bindings(
-    preview_knit = function(path = NULL, style = FALSE) {
-      calls$preview <<- list(path = path, style = style)
-      invisible(list(ok = TRUE))
-    },
-    live_preview_knit = function(path = NULL, style = FALSE) {
-      calls$live_preview <<- list(path = path, style = style)
-      invisible(list(ok = TRUE))
-    },
-    format_active_file = function(path = NULL) {
+    code_format = function(path = NULL) {
       calls$format_active <<- list(path = path)
       invisible(list(ok = TRUE))
     },
-    format_project_files = function(path = ".") {
+    code_format_all = function(path = ".") {
       calls$format_project <<- list(path = path)
       invisible(list(ok = TRUE))
     }
   )
 
   shiny::testServer(server, {
-    session$setInputs(report_path = "reports/a.Rmd", report_style = TRUE)
-    session$setInputs(report_preview = 1)
-    session$setInputs(report_live_preview = 1)
     session$setInputs(format_path = "scripts/a.R")
     session$setInputs(format_active = 1)
     session$setInputs(format_project = 1)
 
-    expect_equal(calls$preview$path, "reports/a.Rmd")
-    expect_true(calls$preview$style)
-    expect_equal(calls$live_preview$path, "reports/a.Rmd")
-    expect_true(calls$live_preview$style)
     expect_equal(calls$format_active$path, "scripts/a.R")
     expect_equal(
       as.character(normalize_project_path(calls$format_project$path)),
@@ -124,10 +109,10 @@ test_that("painel importa arquivo e mostra diff", {
 
   project <- withr::local_tempdir()
   calls <- list()
-  server <- git4stats_panel_server(project)
+  server <- statgit_panel_server(project)
 
   testthat::local_mocked_bindings(
-    import_project_file = function(source, destination, path, move, add_to_git, overwrite) {
+    file_import = function(source, destination, path, move, add_to_git, overwrite) {
       calls$import <<- list(
         source = source,
         destination = destination,
@@ -138,7 +123,7 @@ test_that("painel importa arquivo e mostra diff", {
       )
       invisible(list(ok = TRUE))
     },
-    git_diff_file = function(file, path = ".", staged = FALSE, context = "changes") {
+    git_diff = function(file, path = ".", staged = FALSE, context = "changes") {
       calls$diff <<- list(file = file, path = path, staged = staged, context = context)
       invisible(list(ok = TRUE, diff = c("- antigo", "+ novo")))
     }
@@ -162,8 +147,8 @@ test_that("painel importa arquivo e mostra diff", {
     expect_equal(calls$diff$file, "analise.R")
     expect_equal(calls$diff$context, "full")
     expect_match(values$log, "\\+ novo")
-    expect_match(values$diff_html, "g4s-diff-remove", fixed = TRUE)
-    expect_match(values$diff_html, "g4s-diff-add", fixed = TRUE)
+    expect_match(values$diff_html, "tr-diff-remove", fixed = TRUE)
+    expect_match(values$diff_html, "tr-diff-add", fixed = TRUE)
   })
 })
 
@@ -172,22 +157,22 @@ test_that("painel prepara, desprepara, descarta e commita selecionados", {
 
   project <- withr::local_tempdir()
   calls <- list()
-  server <- git4stats_panel_server(project)
+  server <- statgit_panel_server(project)
 
   testthat::local_mocked_bindings(
-    stage_files = function(files, path = ".") {
+    git_stage = function(files, path = ".") {
       calls$stage <<- list(files = files, path = path)
       invisible(list(ok = TRUE))
     },
-    unstage_files = function(files, path = ".") {
+    git_unstage = function(files, path = ".") {
       calls$unstage <<- list(files = files, path = path)
       invisible(list(ok = TRUE))
     },
-    discard_file_changes = function(files, path = ".") {
+    git_discard = function(files, path = ".") {
       calls$discard <<- list(files = files, path = path)
       invisible(list(ok = TRUE))
     },
-    commit_staged_files = function(message = "Atualiza projeto", path = ".") {
+    git_commit = function(message = "Atualiza projeto", path = ".") {
       calls$commit <<- list(message = message, path = path)
       invisible(list(ok = TRUE, committed = TRUE))
     }

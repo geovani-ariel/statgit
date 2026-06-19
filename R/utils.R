@@ -1,8 +1,10 @@
-#' Utilidades internas do pacote trackR
+#' Utilidades internas do pacote statgit
 #'
 #' Funcoes auxiliares para diagnostico, mensagens e interacao segura com Git.
 #'
 #' @keywords internal
+#' @importFrom stats setNames
+#' @importFrom utils head
 "_PACKAGE"
 
 `%||%` <- function(x, y) {
@@ -13,15 +15,24 @@
   x
 }
 
-time_ago <- function(time) {
+time_ago <- function(time, lang = "pt") {
   if (length(time) == 0 || is.na(time)) return("")
   diff <- as.numeric(difftime(Sys.time(), time, units = "mins"))
+  if (lang == "en") {
+    if (diff < 2) return("just now")
+    if (diff < 60) return(sprintf("%d min ago", as.integer(diff)))
+    diff_hours <- diff / 60
+    if (diff_hours < 24) return(sprintf("%d h ago", as.integer(diff_hours)))
+    diff_days <- diff_hours / 24
+    if (diff_days < 30) return(sprintf("%d days ago", as.integer(diff_days)))
+    return(format(time, "%Y/%m/%d"))
+  }
   if (diff < 2) return("agora mesmo")
-  if (diff < 60) return(sprintf("há %d min", as.integer(diff)))
+  if (diff < 60) return(sprintf("h\u00e1 %d min", as.integer(diff)))
   diff_hours <- diff / 60
-  if (diff_hours < 24) return(sprintf("há %d h", as.integer(diff_hours)))
+  if (diff_hours < 24) return(sprintf("h\u00e1 %d h", as.integer(diff_hours)))
   diff_days <- diff_hours / 24
-  if (diff_days < 30) return(sprintf("há %d dias", as.integer(diff_days)))
+  if (diff_days < 30) return(sprintf("h\u00e1 %d dias", as.integer(diff_days)))
   format(time, "%d/%m/%Y")
 }
 
@@ -142,11 +153,11 @@ next_step_message <- function(diagnosis) {
   }
 
   if (!isTRUE(diagnosis$has_commits)) {
-    return("Use a aba 'Controle Fino (Diffs)' para salvar a primeira versão do projeto.")
+    return("Use a aba 'Controle Fino (Diffs)' para salvar a primeira vers\u00e3o do projeto.")
   }
 
   if (!isTRUE(diagnosis$has_remote)) {
-    return("Você já pode preencher a URL do GitHub na aba 'Git e GitHub'.")
+    return("Voc\u00ea j\u00e1 pode preencher a URL do GitHub na aba 'Git e GitHub'.")
   }
 
   if (diagnosis$status_counts$total > 0) {
@@ -154,7 +165,7 @@ next_step_message <- function(diagnosis) {
   }
 
   if (isTRUE(diagnosis$remote_is_github)) {
-    return("Se quiser enviar seu histórico ao GitHub, clique em 'Enviar Histórico (Push)'.")
+    return("Se quiser enviar seu hist\u00f3rico ao GitHub, clique em 'Enviar Hist\u00f3rico (Push)'.")
   }
 
   "Seu projeto parece em ordem. Continue analisando e fa\u00e7a commits por etapas l\u00f3gicas."
@@ -450,7 +461,7 @@ contributing_template <- function() {
     "",
     "1. Abra sempre o arquivo `.Rproj`.",
     "2. Combine nomes curtos e consistentes para scripts e relatarios.",
-    "3. Faça commits pequenos e com mensagens objetivas.",
+    "3. Fa\u00e7a commits pequenos e com mensagens objetivas.",
     "4. Antes de mexer em `data/`, alinhe com o restante do grupo."
   )
 }

@@ -1,16 +1,16 @@
-test_that("stage_files e unstage_files controlam preparacao", {
+test_that("git_stage e git_unstage controlam preparacao", {
   with_isolated_git_identity({
     project <- withr::local_tempdir()
-    init_git_project(project)
+    git_init(project)
     writeLines("x <- 1", file.path(project, "analise.R"))
 
-    stage_result <- stage_files("analise.R", path = project)
+    stage_result <- git_stage("analise.R", path = project)
     status <- repo_status_table(project)
 
     expect_true(stage_result$ok)
     expect_true(any(status$file == "analise.R" & status$staged))
 
-    unstage_result <- unstage_files("analise.R", path = project)
+    unstage_result <- git_unstage("analise.R", path = project)
     status <- repo_status_table(project)
 
     expect_true(unstage_result$ok)
@@ -18,15 +18,15 @@ test_that("stage_files e unstage_files controlam preparacao", {
   })
 })
 
-test_that("commit_staged_files salva apenas arquivos preparados", {
+test_that("git_commit salva apenas arquivos preparados", {
   with_isolated_git_identity({
     project <- withr::local_tempdir()
-    init_git_project(project)
+    git_init(project)
     writeLines("x <- 1", file.path(project, "analise.R"))
     writeLines("y <- 1", file.path(project, "rascunho.R"))
 
-    stage_files("analise.R", path = project)
-    result <- commit_staged_files("Adiciona analise", path = project)
+    git_stage("analise.R", path = project)
+    result <- git_commit("Adiciona analise", path = project)
     status <- repo_status_table(project)
 
     expect_true(result$ok)
@@ -36,15 +36,15 @@ test_that("commit_staged_files salva apenas arquivos preparados", {
   })
 })
 
-test_that("discard_file_changes descarta modificacao rastreada", {
+test_that("git_discard descarta modificacao rastreada", {
   with_isolated_git_identity({
     project <- withr::local_tempdir()
-    init_git_project(project)
+    git_init(project)
     writeLines("x <- 1", file.path(project, "analise.R"))
-    first_commit(path = project)
+    git_commit_all(path = project)
     writeLines("x <- 2", file.path(project, "analise.R"))
 
-    result <- discard_file_changes("analise.R", path = project)
+    result <- git_discard("analise.R", path = project)
 
     expect_true(result$ok)
     expect_equal(readLines(file.path(project, "analise.R")), "x <- 1")

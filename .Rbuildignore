@@ -1,2 +1,15 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.Rhistory$
+^\.RData$
+^.*\.Rcheck$
+^\.\.Rcheck$
+^git4stats\.Rcheck$
+^.*\.tar\.gz$
+^\.vscode$
+^\.claude$
+^\.DS_Store$
+^.*/\.DS_Store$
+^\.github$
+^cran-comments\.md$
+^README\.Rmd$

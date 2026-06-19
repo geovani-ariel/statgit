@@ -24,7 +24,7 @@ file_import <- function(
   target_path <- fs::path(destination_dir, fs::path_file(source_path))
 
   if (!fs::file_exists(source_path)) {
-    stop("O arquivo de origem nao existe.", call. = FALSE)
+    stop("O arquivo de origem n\u00e3o foi encontrado.", call. = FALSE)
   }
 
   if (!is_within_project(target_path, project_path)) {
@@ -32,7 +32,7 @@ file_import <- function(
   }
 
   if (fs::file_exists(target_path) && !isTRUE(overwrite)) {
-    stop("Ja existe um arquivo com esse nome no destino.", call. = FALSE)
+    stop("J\u00e1 existe um arquivo com esse nome no destino. Marque 'Substituir arquivo existente' ou escolha outro destino.", call. = FALSE)
   }
 
   fs::dir_create(destination_dir, recurse = TRUE)
@@ -57,7 +57,7 @@ file_import <- function(
 
   cli::cli_alert_success(glue::glue("Arquivo {action} para {relative_path}."))
   if (isTRUE(git_added)) {
-    cli::cli_inform("O arquivo tambem foi preparado para o proximo commit.")
+    cli::cli_inform("O arquivo tamb\u00e9m foi adicionado ao pr\u00f3ximo commit.")
   }
 
   invisible(list(
@@ -189,29 +189,29 @@ default_file_template <- function(type = "R") {
     ),
     Rmd = paste(
       "---",
-      "title: \"Relatório\"",
+      "title: \"Relat\u00f3rio\"",
       "author: \"Seu Nome\"",
       "date: \"`r Sys.Date()`\"",
       "output: html_document",
       "---",
       "",
-      "# Introdução",
+      "# Introdu\u00e7\u00e3o",
       "",
       sep = "\n"
     ),
     qmd = paste(
       "---",
-      "title: \"Relatório\"",
+      "title: \"Relat\u00f3rio\"",
       "author: \"Seu Nome\"",
       "date: today",
       "format: html",
       "---",
       "",
-      "# Introdução",
+      "# Introdu\u00e7\u00e3o",
       "",
       sep = "\n"
     ),
-    md = "# Título\n\n",
+    md = "# T\u00edtulo\n\n",
     txt = "",
     csv = "coluna1,coluna2,coluna3\nvalor1,valor2,valor3\n"
   )
@@ -251,7 +251,7 @@ file_delete_info <- function(path_to_delete, path = ".") {
     return(list(
       ok = FALSE,
       reason = "empty_path",
-      message = "Selecione um arquivo ou pasta para deletar."
+      message = "Selecione um arquivo ou pasta para excluir."
     ))
   }
 
@@ -269,7 +269,7 @@ file_delete_info <- function(path_to_delete, path = ".") {
     return(list(
       ok = FALSE,
       reason = "protected_file",
-      message = glue::glue("'{relative_path}' é um arquivo crítico e não pode ser deletado.")
+      message = glue::glue("'{relative_path}' \u00e9 um arquivo essencial do projeto e n\u00e3o pode ser exclu\u00eddo pelo statgit.")
     ))
   }
 
@@ -278,7 +278,7 @@ file_delete_info <- function(path_to_delete, path = ".") {
     return(list(
       ok = FALSE,
       reason = "not_found",
-      message = glue::glue("'{relative_path}' não foi encontrado no projeto.")
+      message = glue::glue("'{relative_path}' n\u00e3o foi encontrado no projeto.")
     ))
   }
 
@@ -311,10 +311,10 @@ file_delete_info <- function(path_to_delete, path = ".") {
 #' @param type Tipo de arquivo: "R", "Rmd", "qmd", "md", "txt", "csv"
 #' @param destination Pasta dentro do projeto (ex: "scripts", "reports")
 #' @param path Caminho do projeto
-#' @param content Conteúdo inicial do arquivo. Se `NULL`, usa o template padrão.
+#' @param content Conteudo inicial do arquivo. Se `NULL`, usa o template padrao.
 #' @param open_in_rstudio Se TRUE, abre o arquivo no RStudio editor
 #'
-#' @return Lista com resultado da criação
+#' @return Lista com resultado da criacao
 #' @export
 file_create <- function(filename, type = "R", destination = ".", path = ".", content = NULL, open_in_rstudio = TRUE) {
   project_path <- normalize_project_path(path)
@@ -323,9 +323,9 @@ file_create <- function(filename, type = "R", destination = ".", path = ".", con
   filename <- trimws(filename %||% "")
   file_path <- fs::path(full_dir, filename)
 
-  # Validações
+  # Valida\u00e7\u00f5es
   if (!nzchar(filename)) {
-    cli::cli_alert_danger("Nome do arquivo não pode estar vazio.")
+    cli::cli_alert_danger("O nome do arquivo n\u00e3o pode estar vazio. Informe um nome antes de criar.")
     return(invisible(list(ok = FALSE, reason = "empty_filename")))
   }
 
@@ -343,7 +343,7 @@ file_create <- function(filename, type = "R", destination = ".", path = ".", con
   }
 
   if (fs::file_exists(file_path)) {
-    cli::cli_alert_danger(glue::glue("O arquivo '{filename}' já existe."))
+    cli::cli_alert_danger(glue::glue("J\u00e1 existe um arquivo com o nome '{filename}' nesta pasta. Escolha um nome diferente."))
     return(invisible(list(ok = FALSE, reason = "file_exists")))
   }
 
@@ -354,7 +354,7 @@ file_create <- function(filename, type = "R", destination = ".", path = ".", con
     file_content <- paste(as.character(file_content), collapse = "\n")
   }
 
-  # Criar diretório se necessário
+  # Criar diret\u00f3rio se necess\u00e1rio
   fs::dir_create(full_dir, recurse = TRUE)
 
   # Escrever arquivo
@@ -383,7 +383,7 @@ file_create <- function(filename, type = "R", destination = ".", path = ".", con
       type = type
     ))
   }, error = function(e) {
-    cli::cli_alert_danger("Erro ao criar arquivo.")
+    cli::cli_alert_danger("N\u00e3o foi poss\u00edvel criar o arquivo. Verifique se voc\u00ea tem permiss\u00e3o de escrita na pasta de destino.")
     cli::cli_inform(conditionMessage(e))
     invisible(list(ok = FALSE, reason = "creation_error", error = conditionMessage(e)))
   })
@@ -395,7 +395,7 @@ file_create <- function(filename, type = "R", destination = ".", path = ".", con
 #' @param path Caminho do projeto
 #' @param remove_from_git Se `TRUE`, prepara a remocao no Git quando o item era rastreado.
 #'
-#' @return Lista com resultado da deleção
+#' @return Lista com resultado da delecao
 #' @export
 file_delete <- function(path_to_delete, path = ".", remove_from_git = FALSE) {
   info <- file_delete_info(path_to_delete, path = path)
@@ -428,9 +428,9 @@ file_delete <- function(path_to_delete, path = ".", remove_from_git = FALSE) {
     cli::cli_alert_success(glue::glue("{info$item_type_label} '{info$relative_path}' deletado."))
 
     if (isTRUE(git_removed)) {
-      cli::cli_inform("A remoção também foi preparada no Git.")
+      cli::cli_inform("A remo\u00e7\u00e3o tamb\u00e9m foi registrada no Git e ser\u00e1 inclu\u00edda no pr\u00f3ximo commit.")
     } else if (isTRUE(info$was_tracked)) {
-      cli::cli_inform("⚠️  Este item estava rastreado no Git. Você pode recuperá-lo do histórico se necessário.")
+      cli::cli_inform("Este item estava no hist\u00f3rico do Git. Se precisar recuper\u00e1-lo, use 'git checkout' com o hash do commit anterior.")
     }
 
     invisible(list(
@@ -441,13 +441,19 @@ file_delete <- function(path_to_delete, path = ".", remove_from_git = FALSE) {
       git_removed = git_removed
     ))
   }, error = function(e) {
-    cli::cli_alert_danger("Erro ao deletar item.")
+    cli::cli_alert_danger("N\u00e3o foi poss\u00edvel excluir o item. Verifique se ele est\u00e1 sendo usado por outro programa.")
     cli::cli_inform(conditionMessage(e))
     invisible(list(ok = FALSE, reason = "deletion_error", error = conditionMessage(e)))
   })
 }
 
 #' Renomeia um arquivo ou pasta no projeto
+#'
+#' @param source Caminho do arquivo ou pasta atual, relativo ao projeto.
+#' @param target Novo caminho (nome) do arquivo ou pasta, relativo ao projeto.
+#' @param path Caminho do projeto. Por padrao, o diretorio de trabalho atual.
+#'
+#' @return Invisivelmente, uma lista com o resultado da operacao.
 #' @export
 file_rename <- function(source, target, path = ".") {
   project_path <- normalize_project_path(path)
@@ -455,13 +461,13 @@ file_rename <- function(source, target, path = ".") {
   target_path <- fs::path(project_path, target)
 
   if (!fs::file_exists(source_path) && !fs::dir_exists(source_path)) {
-    cli::cli_alert_danger(glue::glue("Origem '{source}' não encontrada."))
-    return(invisible(list(ok = FALSE, output = glue::glue("Item não encontrado: {source}"))))
+    cli::cli_alert_danger(glue::glue("Origem '{source}' n\u00e3o encontrada."))
+    return(invisible(list(ok = FALSE, output = glue::glue("Item n\u00e3o encontrado: {source}"))))
   }
 
   if (fs::file_exists(target_path) || fs::dir_exists(target_path)) {
-    cli::cli_alert_danger(glue::glue("O destino '{target}' já existe."))
-    return(invisible(list(ok = FALSE, output = glue::glue("Destino já existe: {target}"))))
+    cli::cli_alert_danger(glue::glue("O destino '{target}' j\u00e1 existe."))
+    return(invisible(list(ok = FALSE, output = glue::glue("Destino j\u00e1 existe: {target}"))))
   }
 
   tryCatch({

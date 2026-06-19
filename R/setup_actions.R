@@ -1,4 +1,10 @@
 #' Configura nome e email global no Git
+#'
+#' @param name Nome a registrar em `user.name` na configuracao global do Git.
+#' @param email Email a registrar em `user.email` na configuracao global do Git.
+#'
+#' @return Invisivelmente, `TRUE` se a configuracao foi aplicada, `FALSE` caso
+#'   contrario.
 #' @export
 git_set_identity <- function(name, email) {
   if (!git_installed()) return(invisible(FALSE))

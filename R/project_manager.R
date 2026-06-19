@@ -58,40 +58,19 @@ project_manager_addin <- function() {
   ensure_suggested_package("miniUI", "o gerenciador de projetos")
 
   ui <- miniUI::miniPage(
-    miniUI::gadgetTitleBar("trackR: gerenciar projetos"),
+    miniUI::gadgetTitleBar("statgit"),
     miniUI::miniContentPanel(
       shiny::fillCol(
-        flex = c(1, 1),
-        shiny::div(
-          shiny::h4("1. Criar projeto organizado"),
-          shiny::textInput("base_dir", "Pasta base", value = default_projects_directory()),
-          shiny::textInput("project_name", "Nome do projeto", value = "meu-projeto"),
-          shiny::selectInput("template", "Template", choices = project_template_choices()),
-          shiny::checkboxInput("include_data", "Versionar a pasta data/", value = TRUE),
-          shiny::checkboxInput("initialize_git", "Inicializar Git", value = TRUE),
-          shiny::checkboxInput("open_after_create", "Abrir projeto ao criar", value = TRUE),
-          shiny::textAreaInput(
-            "extra_files",
-            "Arquivos extras (um por linha)",
-            value = "scripts/03-figuras.R\nreports/apresentacao.qmd",
-            rows = 4
-          ),
-          shiny::actionButton("create_project", "Criar projeto"),
-          shiny::verbatimTextOutput("create_result")
-        ),
-        shiny::div(
-          shiny::h4("2. Abrir projeto existente"),
-          shiny::textInput("search_root", "Buscar projetos em", value = default_projects_directory()),
-          shiny::actionButton("refresh_projects", "Atualizar lista"),
-          shiny::selectInput("project_choice", "Projetos encontrados", choices = character()),
-          shiny::actionButton("open_project", "Abrir projeto selecionado"),
-          shiny::verbatimTextOutput("open_result")
-        )
+        flex = c(0, 1),
+        shiny::selectInput("trackr_language", NULL, choices = trackr_language_choices(), selected = "en", width = "100%"),
+        shiny::uiOutput("project_manager_content")
       )
     )
   )
 
   server <- function(input, output, session) {
+    language <- shiny::reactive(input$trackr_language %||% "en")
+    tr <- trackr_tr(language)
     values <- shiny::reactiveValues(
       create_result = "",
       open_result = ""
@@ -106,6 +85,37 @@ project_manager_addin <- function() {
     refresh_project_choices <- function(root) {
       project_choices(named_project_choices(root))
     }
+
+    output$project_manager_content <- shiny::renderUI({
+      shiny::fillCol(
+        flex = c(1, 1),
+        shiny::div(
+          shiny::h4(tr("manager.create_title")),
+          shiny::textInput("base_dir", tr("project.base_dir"), value = default_projects_directory()),
+          shiny::textInput("project_name", tr("project.name"), value = tr("project.default_name")),
+          shiny::selectInput("template", "Template", choices = project_template_choices()),
+          shiny::checkboxInput("include_data", tr("project.include_data"), value = TRUE),
+          shiny::checkboxInput("initialize_git", tr("project.initialize_git"), value = TRUE),
+          shiny::checkboxInput("open_after_create", tr("project.open_after_create"), value = TRUE),
+          shiny::textAreaInput(
+            "extra_files",
+            tr("project.extra_files"),
+            value = "scripts/03-figuras.R\nreports/apresentacao.qmd",
+            rows = 4
+          ),
+          shiny::actionButton("create_project", tr("project.create_button")),
+          shiny::verbatimTextOutput("create_result")
+        ),
+        shiny::div(
+          shiny::h4(tr("manager.open_title")),
+          shiny::textInput("search_root", tr("manager.search_root"), value = default_projects_directory()),
+          shiny::actionButton("refresh_projects", tr("changes.refresh")),
+          shiny::selectInput("project_choice", tr("manager.found_projects"), choices = character()),
+          shiny::actionButton("open_project", tr("manager.open_selected")),
+          shiny::verbatimTextOutput("open_result")
+        )
+      )
+    })
 
     shiny::observe({
       choices <- project_choices()
@@ -126,7 +136,7 @@ project_manager_addin <- function() {
       project_name <- trimws(input$project_name)
 
       if (!nzchar(project_name)) {
-        values$create_result <- "Informe um nome para o projeto."
+        values$create_result <- tr("manager.name_required")
         return()
       }
 
@@ -151,7 +161,7 @@ project_manager_addin <- function() {
       selected <- input$project_choice %||% ""
 
       if (!nzchar(selected)) {
-        values$open_result <- "Nenhum projeto foi selecionado."
+        values$open_result <- tr("manager.none_selected")
         return()
       }
 
@@ -171,7 +181,7 @@ project_manager_addin <- function() {
     output$open_result <- shiny::renderText(values$open_result)
   }
 
-  shiny::runGadget(ui, server = server, viewer = shiny::dialogViewer("trackR"))
+  shiny::runGadget(ui, server = server, viewer = shiny::dialogViewer("statgit"))
   invisible(NULL)
 }
 

@@ -138,8 +138,8 @@ test_that("file_delete identifica item rastreado no Git mesmo sem mudancas pende
     dir.create(file.path(project, "scripts"), recursive = TRUE)
     target <- file.path(project, "scripts", "analise.R")
     writeLines("x <- 1", target)
-    gert::git_add("scripts/analise.R", repo = project)
-    gert::git_commit("Adiciona arquivo", repo = project)
+    git_stage("scripts/analise.R", path = project)
+    git_commit("Adiciona arquivo", path = project)
 
     result <- file_delete("scripts/analise.R", path = project)
 
@@ -156,8 +156,8 @@ test_that("file_delete pode preparar remocao de arquivo rastreado no Git", {
     dir.create(file.path(project, "scripts"), recursive = TRUE)
     target <- file.path(project, "scripts", "analise.R")
     writeLines("x <- 1", target)
-    gert::git_add("scripts/analise.R", repo = project)
-    gert::git_commit("Adiciona arquivo", repo = project)
+    git_stage("scripts/analise.R", path = project)
+    git_commit("Adiciona arquivo", path = project)
 
     result <- file_delete("scripts/analise.R", path = project, remove_from_git = TRUE)
     status <- repo_status_table(project)

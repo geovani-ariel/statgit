@@ -5,11 +5,11 @@ addin_check_git <- function() {
   git_check(active_project_path())
 }
 
-#' Addin para abrir o painel principal do trackR
+#' Addin para abrir o painel principal do statgit
 #'
 #' @export
-addin_trackR <- function() {
-  trackR(active_project_path())
+addin_statgit <- function() {
+  statgit(active_project_path())
 }
 
 #' Addin para abrir o wizard de configuracao Git
@@ -23,14 +23,15 @@ addin_git_setup_wizard <- function() {
 #'
 #' @export
 addin_first_commit <- function() {
-  default_message <- "Primeiro commit"
+  tr <- trackr_tr()
+  default_message <- tr("git.first_commit.default")
 
   message <- default_message
   if (rstudioapi::isAvailable()) {
     prompt_result <- tryCatch(
       rstudioapi::showPrompt(
-        title = "Primeiro commit",
-        message = "Escreva uma mensagem curta para salvar esta vers\u00e3o:",
+        title = tr("git.first_commit.default"),
+        message = tr("changes.commit_message"),
         default = default_message
       ),
       error = function(e) default_message
@@ -97,7 +98,7 @@ git_wizard <- function(path = ".") {
   project_path <- normalize_project_path(path)
 
   ui <- miniUI::miniPage(
-    miniUI::gadgetTitleBar("trackR: configurar Git neste projeto"),
+    miniUI::gadgetTitleBar("statgit"),
     shiny::tags$head(
       shiny::tags$style(shiny::HTML(
         ".wizard-step-ok, .wizard-step-warn {padding: 8px 10px; border-radius: 6px; margin-bottom: 8px;}
@@ -108,55 +109,9 @@ git_wizard <- function(path = ".") {
     ),
     miniUI::miniContentPanel(
       shiny::fillCol(
-        flex = c(1, 1, 1, 1, 1, 1, 1, 1),
-        shiny::uiOutput("wizard_overview"),
-        shiny::div(
-          shiny::h4("1. Diagn\u00f3stico"),
-          shiny::p("Veja se Git j\u00e1 est\u00e1 pronto para uso neste projeto."),
-          shiny::uiOutput("diagnose_button"),
-          shiny::verbatimTextOutput("diagnosis")
-        ),
-        shiny::div(
-          shiny::h4("2. Inicializar Git"),
-          shiny::p("Transforma esta pasta em um reposit\u00f3rio local com branch principal main."),
-          shiny::uiOutput("init_button"),
-          shiny::verbatimTextOutput("init_result")
-        ),
-        shiny::div(
-          shiny::h4("3. Criar .gitignore"),
-          shiny::p("Evita versionar arquivos tempor\u00e1rios do RStudio e sa\u00eddas geradas automaticamente."),
-          shiny::checkboxInput("ignore_data", "Ignorar data/raw/ e data/processed/", value = FALSE),
-          shiny::uiOutput("gitignore_button"),
-          shiny::verbatimTextOutput("gitignore_result")
-        ),
-        shiny::div(
-          shiny::h4("4. Criar estrutura do projeto"),
-          shiny::p("Organiza o projeto em pastas comuns para an\u00e1lise estat\u00edstica."),
-          shiny::checkboxInput("template_data", "Versionar a pasta data/", value = TRUE),
-          shiny::uiOutput("template_button"),
-          shiny::verbatimTextOutput("template_result")
-        ),
-        shiny::div(
-          shiny::h4("5. Primeiro commit"),
-          shiny::p("Commit = salvar uma vers\u00e3o do projeto no hist\u00f3rico local."),
-          shiny::textInput("commit_message", "Mensagem do commit", value = "Primeiro commit"),
-          shiny::uiOutput("commit_button"),
-          shiny::verbatimTextOutput("commit_result")
-        ),
-        shiny::div(
-          shiny::h4("6. GitHub"),
-          shiny::p("Aqui voc\u00ea liga o projeto local a um remote e testa o primeiro envio."),
-          shiny::textInput("remote_url", "URL do reposit\u00f3rio GitHub", value = ""),
-          shiny::checkboxInput("replace_remote", "Trocar a URL se o remote j\u00e1 existir", value = FALSE),
-          shiny::uiOutput("connect_button"),
-          shiny::uiOutput("auth_button"),
-          shiny::uiOutput("push_button"),
-          shiny::verbatimTextOutput("github_result")
-        ),
-        shiny::div(
-          shiny::h4("7. Pr\u00f3ximos passos"),
-          shiny::verbatimTextOutput("next_steps")
-        )
+        flex = c(0, 1),
+        shiny::selectInput("trackr_language", NULL, choices = trackr_language_choices(), selected = "en", width = "100%"),
+        shiny::uiOutput("wizard_content")
       )
     )
   )
@@ -164,7 +119,7 @@ git_wizard <- function(path = ".") {
   shiny::runGadget(
     ui,
     server = git_wizard_server(project_path),
-    viewer = shiny::dialogViewer("trackR")
+    viewer = shiny::dialogViewer("statgit")
   )
   invisible(project_path)
 }
@@ -173,6 +128,8 @@ git_wizard_server <- function(project_path) {
   force(project_path)
 
   function(input, output, session) {
+    language <- shiny::reactive(input$trackr_language %||% "en")
+    tr <- trackr_tr(language)
     initial_diagnosis <- build_git_diagnosis(project_path)
     diagnosis_state <- shiny::reactiveVal(initial_diagnosis)
     values <- shiny::reactiveValues(
@@ -198,30 +155,84 @@ git_wizard_server <- function(project_path) {
       diagnosis_state()
     })
 
+    output$wizard_content <- shiny::renderUI({
+      shiny::fillCol(
+        flex = c(1, 1, 1, 1, 1, 1, 1, 1),
+        shiny::uiOutput("wizard_overview"),
+        shiny::div(
+          shiny::h4(tr("wizard.step.diagnosis")),
+          shiny::p(tr("wizard.step.diagnosis_help")),
+          shiny::uiOutput("diagnose_button"),
+          shiny::verbatimTextOutput("diagnosis")
+        ),
+        shiny::div(
+          shiny::h4(tr("wizard.step.init")),
+          shiny::p(tr("wizard.step.init_help")),
+          shiny::uiOutput("init_button"),
+          shiny::verbatimTextOutput("init_result")
+        ),
+        shiny::div(
+          shiny::h4(tr("wizard.step.gitignore")),
+          shiny::p(tr("wizard.step.gitignore_help")),
+          shiny::checkboxInput("ignore_data", tr("git.ignore_data"), value = FALSE),
+          shiny::uiOutput("gitignore_button"),
+          shiny::verbatimTextOutput("gitignore_result")
+        ),
+        shiny::div(
+          shiny::h4(tr("wizard.step.structure")),
+          shiny::p(tr("wizard.step.structure_help")),
+          shiny::checkboxInput("template_data", tr("project.include_data"), value = TRUE),
+          shiny::uiOutput("template_button"),
+          shiny::verbatimTextOutput("template_result")
+        ),
+        shiny::div(
+          shiny::h4(tr("wizard.step.commit")),
+          shiny::p(tr("wizard.step.commit_help")),
+          shiny::textInput("commit_message", tr("git.commit_label"), value = tr("git.first_commit.default")),
+          shiny::uiOutput("commit_button"),
+          shiny::verbatimTextOutput("commit_result")
+        ),
+        shiny::div(
+          shiny::h4("6. GitHub"),
+          shiny::p(tr("wizard.step.github_help")),
+          shiny::textInput("remote_url", tr("git.remote_url"), value = ""),
+          shiny::checkboxInput("replace_remote", tr("git.replace_remote"), value = FALSE),
+          shiny::uiOutput("connect_button"),
+          shiny::uiOutput("auth_button"),
+          shiny::uiOutput("push_button"),
+          shiny::verbatimTextOutput("github_result")
+        ),
+        shiny::div(
+          shiny::h4(tr("wizard.step.next")),
+          shiny::verbatimTextOutput("next_steps")
+        )
+      )
+    })
+
     output$wizard_overview <- shiny::renderUI({
       d <- diagnosis_ready()
       shiny::div(
         class = "wizard-overview",
         wizard_step_note(
-          "Estado atual",
+          tr("wizard.current_state"),
           next_step_message(d),
           ok = d$git_installed && d$has_repo
         ),
         wizard_step_note(
           "Commit",
           if (d$has_commits) {
-            glue::glue("Branch atual: {d$branch %||% 'sem branch ativa'}.")
+            tr("wizard.current_branch", d$branch %||% tr("common.current_branch_missing"))
           } else {
-            "Ainda falta criar o primeiro commit."
+            tr("wizard.first_commit_missing")
           },
           ok = d$has_commits
         ),
         wizard_step_note(
           "GitHub",
           if (d$has_remote) {
-            paste("Remote atual:", d$remote_name, "->", d$remote_url)
+            paste(tr("wizard.current_remote"), d$remote_name, "->", d$remote_url)
           } else {
-            "Ainda n\u00e3o existe remote configurado."
+            tr("wizard.no_remote")
           },
           ok = d$has_remote
         )
@@ -229,46 +240,46 @@ git_wizard_server <- function(project_path) {
     })
 
     output$diagnose_button <- shiny::renderUI({
-      wizard_action_button("diagnose", "Atualizar diagn\u00f3stico", enabled = TRUE)
+      wizard_action_button("diagnose", tr("wizard.refresh"), enabled = TRUE)
     })
 
     output$init_button <- shiny::renderUI({
       d <- diagnosis_ready()
-      wizard_action_button("init_repo", "Inicializar Git", enabled = d$git_installed && !d$has_repo)
+      wizard_action_button("init_repo", tr("git.init"), enabled = d$git_installed && !d$has_repo)
     })
 
     output$gitignore_button <- shiny::renderUI({
-      wizard_action_button("write_gitignore", "Criar ou atualizar .gitignore", enabled = TRUE)
+      wizard_action_button("write_gitignore", tr("git.gitignore"), enabled = TRUE)
     })
 
     output$template_button <- shiny::renderUI({
-      wizard_action_button("write_template", "Criar estrutura", enabled = TRUE)
+      wizard_action_button("write_template", tr("wizard.create_structure"), enabled = TRUE)
     })
 
     output$commit_button <- shiny::renderUI({
       d <- diagnosis_ready()
       wizard_action_button(
         "run_commit",
-        "Fazer primeiro commit",
+        tr("wizard.first_commit"),
         enabled = d$has_repo && isTRUE(d$identity$complete) && d$status_counts$total > 0
       )
     })
 
     output$connect_button <- shiny::renderUI({
       d <- diagnosis_ready()
-      wizard_action_button("connect_remote", "Conectar remote GitHub", enabled = d$has_repo)
+      wizard_action_button("connect_remote", tr("wizard.connect_remote"), enabled = d$has_repo)
     })
 
     output$auth_button <- shiny::renderUI({
       d <- diagnosis_ready()
-      wizard_action_button("check_remote_auth", "Testar acesso ao GitHub", enabled = d$has_remote)
+      wizard_action_button("check_remote_auth", tr("wizard.test_github"), enabled = d$has_remote)
     })
 
     output$push_button <- shiny::renderUI({
       d <- diagnosis_ready()
       wizard_action_button(
         "run_push",
-        "Enviar commits ao GitHub",
+        tr("wizard.push"),
         enabled = d$has_remote && d$has_commits && !is.null(d$branch)
       )
     })
@@ -337,9 +348,9 @@ git_wizard_server <- function(project_path) {
       paste(
         next_step_message(d),
         "",
-        "Commit = salvar uma vers\u00e3o do projeto.",
-        "Push = enviar commits para o GitHub.",
-        "Pull = baixar mudan\u00e7as feitas por colegas.",
+        tr("wizard.next_commit"),
+        tr("wizard.next_push"),
+        tr("wizard.next_pull"),
         sep = "\n"
       )
     })

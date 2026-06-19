@@ -1,6 +1,6 @@
-Package: trackR
+Package: statgit
 Type: Package
-Title: Controle de Versao e Gerenciamento de Projetos para Estatistica no RStudio
+Title: Controle de Versão e Gerenciamento de Projetos de Estatística no RStudio
 Version: 0.1.0
 Authors@R: c(
     person(
@@ -10,13 +10,18 @@ Authors@R: c(
       email = "geovaniariel08@hotmail.com"
     )
   )
-Author: Geovani Ariel Bueno Paschoini [aut, cre]
-Maintainer: Geovani Ariel Bueno Paschoini <geovaniariel08@hotmail.com>
-Description: O trackR oferece controle de versao com Git, gerenciamento de
-    projetos estatisticos e ferramentas de formatacao e preview para estudantes
-    de Estatistica que usam RStudio.
+Description: Um conjunto de complementos ('addins') do RStudio e uma interface
+    'Shiny' que ajudam estudantes de Estatística a usar controle de versão com
+    Git, organizar projetos a partir de modelos, formatar código com 'styler'
+    e gerar pré-visualizações de relatórios 'R Markdown' e 'Quarto'. As ações
+    são apresentadas em linguagem acessível para quem está começando.
 License: GPL-3
 Encoding: UTF-8
+Language: pt-BR
+URL: https://github.com/geovani-ariel/statgit
+BugReports: https://github.com/geovani-ariel/statgit/issues
+SystemRequirements: Git, Pandoc (for R Markdown preview), Quarto (optional, for
+    .qmd preview)
 Roxygen: list(markdown = TRUE)
 Depends:
     R (>= 4.1.0)
@@ -27,6 +32,7 @@ Imports:
     glue,
     rstudioapi
 Suggests:
+    htmltools,
     miniUI,
     rmarkdown,
     shiny,

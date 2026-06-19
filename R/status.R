@@ -14,7 +14,7 @@ git_status <- function(path = ".") {
 
   if (!diagnosis$has_repo) {
     cli::cli_alert_warning("Esta pasta ainda n\u00e3o usa Git.")
-    cli::cli_inform("Vá na aba 'Git e GitHub' e clique em 'Inicializar Git'.")
+    cli::cli_inform("V\u00e1 na aba 'Git e GitHub' e clique em 'Inicializar Git'.")
     return(invisible(empty_status_table()))
   }
 
@@ -33,7 +33,7 @@ git_status <- function(path = ".") {
   }
 
   if (length(buckets$new) > 0) {
-    cat("Arquivos novos ainda fora do hist\u00f3rico (untracked):\n", sep = "")
+    cat("Arquivos novos ainda fora do hist\u00f3rico:\n", sep = "")
     print_named_list(paste0("- ", buckets$new))
     cat("\n")
   }
@@ -62,6 +62,6 @@ git_status <- function(path = ".") {
     cat("\n")
   }
 
-  cat("Sugest\u00e3o:\nFa\u00e7a um commit quando terminar uma etapa l\u00f3gica da an\u00e1lise.\n")
+  cat("Sugest\u00e3o:\nFa\u00e7a um commit ao concluir uma etapa da an\u00e1lise para salvar essa vers\u00e3o no hist\u00f3rico.\n")
   invisible(status_tbl)
 }

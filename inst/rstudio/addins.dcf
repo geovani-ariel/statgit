@@ -1,6 +1,6 @@
-Name: trackR
-Description: Abre o painel principal para gerenciar projeto, Git, relatorios e formatacao.
-Binding: addin_trackR
+Name: statgit
+Description: Abre o painel principal para gerenciar projeto, Git e formatacao.
+Binding: addin_statgit
 Interactive: true
 
 Name: Verificar Git do projeto

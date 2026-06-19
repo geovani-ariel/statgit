@@ -3,7 +3,7 @@ test_that("painel aciona criacao de arquivo com os dados da UI", {
 
   project <- withr::local_tempdir()
   calls <- list()
-  server <- trackR_panel_server(project)
+  server <- statgit_panel_server(project)
 
   testthat::local_mocked_bindings(
     file_create = function(filename, type = "R", destination = ".", path = ".", content = NULL, open_in_rstudio = TRUE) {
@@ -41,12 +41,22 @@ test_that("painel aciona criacao de arquivo com os dados da UI", {
   })
 })
 
+test_that("painel principal inclui estrutura de navegacao", {
+  skip_if_not_installed("shiny")
+
+  html <- htmltools::renderTags(statgit_panel_ui(withr::local_tempdir()))$html
+
+  expect_match(html, "module_nav", fixed = TRUE)
+  expect_match(html, "tr-sidebar", fixed = TRUE)
+  expect_match(html, "tr-main", fixed = TRUE)
+})
+
 test_that("painel confirma exclusao antes de deletar", {
   skip_if_not_installed("shiny")
 
   project <- withr::local_tempdir()
   calls <- list()
-  server <- trackR_panel_server(project)
+  server <- statgit_panel_server(project)
 
   testthat::local_mocked_bindings(
     file_delete_info = function(path_to_delete, path = ".") {
@@ -99,8 +109,8 @@ test_that("abas criar e deletar exibem a estrutura atual do projeto", {
   criar_html <- htmltools::renderTags(criar_module_ui(diagnosis))$html
   excluir_html <- htmltools::renderTags(excluir_module_ui(diagnosis))$html
 
-  expect_match(criar_html, "Estrutura atual do projeto", fixed = TRUE)
-  expect_match(excluir_html, "Estrutura atual do projeto", fixed = TRUE)
+  expect_match(criar_html, "Current Project Files", fixed = TRUE)
+  expect_match(excluir_html, "Current Project Files", fixed = TRUE)
   expect_match(criar_html, "recent_files_explorer", fixed = TRUE)
   expect_match(excluir_html, "recent_files_explorer", fixed = TRUE)
 })
@@ -132,8 +142,22 @@ test_that("rename_module_ui preenche novo nome com origem inicial", {
 
   html <- htmltools::renderTags(rename_module_ui(diagnosis))$html
 
-  expect_match(html, "Origem", fixed = TRUE)
+  expect_match(html, "Source", fixed = TRUE)
   expect_match(html, "scripts/analise.R", fixed = TRUE)
+})
+
+test_that("modulos aceitam portugues pelo tradutor", {
+  skip_if_not_installed("shiny")
+
+  project <- withr::local_tempdir()
+  diagnosis <- build_git_diagnosis(project)
+  tr_pt <- trackr_tr("pt")
+
+  criar_html <- htmltools::renderTags(criar_module_ui(diagnosis, tr = tr_pt))$html
+  rename_html <- htmltools::renderTags(rename_module_ui(diagnosis, tr = tr_pt))$html
+
+  expect_match(criar_html, "Nome do arquivo", fixed = TRUE)
+  expect_match(rename_html, "Origem", fixed = TRUE)
 })
 
 test_that("git_module_ui mostra estado atual e motivos de bloqueio", {
@@ -156,26 +180,22 @@ test_that("git_module_ui mostra estado atual e motivos de bloqueio", {
 
   html <- htmltools::renderTags(git_module_ui(diagnosis))$html
 
-  expect_match(html, "Git e GitHub", fixed = TRUE)
+  expect_match(html, "Git and GitHub", fixed = TRUE)
   expect_false(grepl("Diagnóstico", html, fixed = TRUE))
-  expect_match(html, "Identidade", fixed = TRUE)
-  expect_match(html, "Identidade atual", fixed = TRUE)
+  expect_match(html, "Next action", fixed = TRUE)
+  expect_match(html, "Connect GitHub", fixed = TRUE)
+  expect_match(html, "Configuration", fixed = TRUE)
+  expect_match(html, "Identity", fixed = TRUE)
   expect_match(html, "Ada &lt;ada@example.com&gt;", fixed = TRUE)
-  expect_match(html, "Salvar ou editar identidade", fixed = TRUE)
-  expect_match(html, "Git local", fixed = TRUE)
-  expect_match(html, "Branch ativa", fixed = TRUE)
+  expect_match(html, "Local Git", fixed = TRUE)
+  expect_match(html, "Branch main", fixed = TRUE)
   expect_match(html, "main", fixed = TRUE)
-  expect_false(grepl("Inicializar Git", html, fixed = TRUE))
-  expect_false(grepl("Criar ou atualizar .gitignore", html, fixed = TRUE))
-  expect_match(html, "Salvar versão local", fixed = TRUE)
-  expect_match(html, "Conectar GitHub", fixed = TRUE)
-  expect_match(html, "Enviar", fixed = TRUE)
-  expect_match(html, "tr-git-step-title complete", fixed = TRUE)
-  expect_match(html, "Não há mudanças pendentes para commitar.", fixed = TRUE)
-  expect_match(html, "Conecte um remote antes de enviar commits.", fixed = TRUE)
-  expect_false(grepl("Trocar URL conectada", html, fixed = TRUE))
-  expect_false(grepl("Testar acesso", html, fixed = TRUE))
-  expect_match(html, "disabled=\"disabled\"", fixed = TRUE)
+  expect_false(grepl("Initialize Git", html, fixed = TRUE))
+  expect_false(grepl("Create or update .gitignore", html, fixed = TRUE))
+  expect_match(html, "tr-git-config-row-head complete", fixed = TRUE)
+  expect_match(html, "Remote not configured", fixed = TRUE)
+  expect_false(grepl("Replace connected URL", html, fixed = TRUE))
+  expect_false(grepl("Test GitHub access", html, fixed = TRUE))
 })
 
 test_that("badges superiores da aba git nao incluem identidade", {
@@ -193,7 +213,7 @@ test_that("badges superiores da aba git nao incluem identidade", {
 
   labels <- vapply(git_status_badge_items(diagnosis), `[[`, character(1), "label")
 
-  expect_equal(labels, c("Git", "Commits", "Remote", "Branch", "Pendências"))
+  expect_equal(labels, c("Git", "Commits", "Remote", "Branch", "Pending"))
 })
 
 test_that("git_module_ui preenche remote atual quando existir", {
@@ -207,7 +227,7 @@ test_that("git_module_ui preenche remote atual quando existir", {
     has_commits = TRUE,
     has_remote = TRUE,
     branch = "main",
-    status_counts = list(total = 2L)
+    status_counts = list(total = 0L)
   )
 
   testthat::local_mocked_bindings(
@@ -218,10 +238,11 @@ test_that("git_module_ui preenche remote atual quando existir", {
 
   html <- htmltools::renderTags(git_module_ui(diagnosis))$html
 
-  expect_match(html, "Remote atual", fixed = TRUE)
+  expect_match(html, "Next action", fixed = TRUE)
+  expect_match(html, "Sync with GitHub", fixed = TRUE)
   expect_match(html, "https://github.com/user/repo.git", fixed = TRUE)
-  expect_match(html, "Salvar remote", fixed = TRUE)
-  expect_match(html, "Trocar URL conectada", fixed = TRUE)
+  expect_match(html, "Save remote", fixed = TRUE)
+  expect_match(html, "Replace connected URL", fixed = TRUE)
   expect_match(html, "Pull + Push", fixed = TRUE)
 })
 
@@ -241,8 +262,8 @@ test_that("git_module_ui mostra bloqueios com explicacao", {
 
   html <- htmltools::renderTags(git_module_ui(diagnosis))$html
 
-  expect_match(html, "tr-git-step-title blocked", fixed = TRUE)
-  expect_match(html, "fa-lock", fixed = TRUE)
-  expect_match(html, "Inicialize o Git antes de criar commits.", fixed = TRUE)
-  expect_match(html, "Inicialize o Git antes de conectar o GitHub.", fixed = TRUE)
+  expect_match(html, "Configure identity", fixed = TRUE)
+  expect_match(html, "tr-git-config-row-head blocked", fixed = TRUE)
+  expect_match(html, "Remote not configured", fixed = TRUE)
+  expect_match(html, "pending", fixed = TRUE)
 })

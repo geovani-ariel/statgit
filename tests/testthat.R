@@ -1,4 +1,4 @@
 library(testthat)
-library(git4stats)
+library(statgit)
 
-test_check("git4stats")
+test_check("statgit")

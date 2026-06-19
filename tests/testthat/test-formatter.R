@@ -17,7 +17,7 @@ test_that("find_styleable_files encontra apenas arquivos suportados", {
   )
 })
 
-test_that("format_active_file roda styler e atualiza editor ativo", {
+test_that("code_format roda styler e atualiza editor ativo", {
   project <- withr::local_tempdir()
   input <- as.character(normalize_project_path(file.path(project, "analise.R")))
   writeLines("x <- 1", input)
@@ -42,7 +42,7 @@ test_that("format_active_file roda styler e atualiza editor ativo", {
     }
   )
 
-  result <- format_active_file(input)
+  result <- code_format(input)
 
   expect_true(result$ok)
   expect_equal(styled, input)
@@ -51,7 +51,7 @@ test_that("format_active_file roda styler e atualiza editor ativo", {
   expect_equal(refreshed$path, input)
 })
 
-test_that("format_project_files formata todos os arquivos suportados", {
+test_that("code_format_all formata todos os arquivos suportados", {
   project <- withr::local_tempdir()
   dir.create(file.path(project, "R"), recursive = TRUE, showWarnings = FALSE)
   dir.create(file.path(project, "reports"), recursive = TRUE, showWarnings = FALSE)
@@ -69,7 +69,7 @@ test_that("format_project_files formata todos os arquivos suportados", {
     source_editor_context = function() NULL
   )
 
-  result <- format_project_files(project)
+  result <- code_format_all(project)
 
   expect_true(result$ok)
   expect_equal(sort(styled), c("a.R", "b.R", "relatorio.Rmd"))

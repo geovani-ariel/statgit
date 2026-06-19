@@ -65,17 +65,23 @@ git_diff <- function(file, path = ".", staged = FALSE, context = c("changes", "f
   ))
 }
 
-format_diff_for_panel <- function(diff_lines) {
+format_diff_for_panel <- function(diff_lines, tr = trackr_tr()) {
   if (length(diff_lines) == 0) {
-    return("Nenhuma mudanca encontrada para este arquivo.")
+    return(tr("diff.no_changes"))
   }
 
   paste(diff_lines, collapse = "\n")
 }
 
-format_diff_for_panel_html <- function(diff_lines) {
+format_diff_for_panel_html <- function(diff_lines, tr = trackr_tr()) {
   if (length(diff_lines) == 0) {
-    return("<div class=\"tr-diff-empty\">Nenhuma mudanca encontrada para este arquivo.</div>")
+    return(paste0(
+      "<div class=\"tr-preview-empty\">",
+      "<div class=\"tr-preview-empty-icon\">", as.character(shiny::icon("code-branch")), "</div>",
+      "<div class=\"tr-preview-empty-title\">", htmltools::htmlEscape(tr("diff.no_changes_title")), "</div>",
+      "<div class=\"tr-preview-empty-hint\">", htmltools::htmlEscape(tr("diff.no_changes_hint")), "</div>",
+      "</div>"
+    ))
   }
 
   lines <- vapply(diff_lines, diff_line_html, character(1))

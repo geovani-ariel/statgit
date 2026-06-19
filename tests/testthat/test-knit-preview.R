@@ -1,4 +1,4 @@
-test_that("preview_knit usa o arquivo informado e abre o HTML gerado", {
+test_that("report_preview usa o arquivo informado e abre o HTML gerado", {
   project <- withr::local_tempdir()
   input <- as.character(normalize_project_path(file.path(project, "relatorio.Rmd")))
   output <- file.path(project, "relatorio.html")
@@ -17,7 +17,7 @@ test_that("preview_knit usa o arquivo informado e abre o HTML gerado", {
     }
   )
 
-  result <- preview_knit(input)
+  result <- report_preview(input)
 
   expect_true(result$ok)
   expect_equal(as.character(result$input), input)
@@ -25,7 +25,7 @@ test_that("preview_knit usa o arquivo informado e abre o HTML gerado", {
   expect_equal(opened_path, output)
 })
 
-test_that("preview_knit usa o documento ativo quando path nao e informado", {
+test_that("report_preview usa o documento ativo quando path nao e informado", {
   project <- withr::local_tempdir()
   input <- as.character(normalize_project_path(file.path(project, "relatorio.qmd")))
   output <- file.path(project, "relatorio.html")
@@ -40,7 +40,7 @@ test_that("preview_knit usa o documento ativo quando path nao e informado", {
     open_preview_output = function(path) invisible(path)
   )
 
-  result <- preview_knit()
+  result <- report_preview()
 
   expect_equal(as.character(result$input), input)
   expect_equal(result$output, output)
@@ -57,7 +57,7 @@ test_that("resolve_preview_document_path rejeita extensoes nao suportadas", {
   )
 })
 
-test_that("preview_knit pode formatar antes de renderizar", {
+test_that("report_preview pode formatar antes de renderizar", {
   project <- withr::local_tempdir()
   input <- as.character(normalize_project_path(file.path(project, "relatorio.Rmd")))
   output <- file.path(project, "relatorio.html")
@@ -65,7 +65,7 @@ test_that("preview_knit pode formatar antes de renderizar", {
   formatted <- character()
 
   testthat::local_mocked_bindings(
-    format_active_file = function(path = NULL) {
+    code_format = function(path = NULL) {
       formatted <<- c(formatted, as.character(path))
       invisible(list(ok = TRUE, path = path))
     },
@@ -76,13 +76,13 @@ test_that("preview_knit pode formatar antes de renderizar", {
     open_preview_output = function(path) invisible(path)
   )
 
-  result <- preview_knit(input, style = TRUE)
+  result <- report_preview(input, style = TRUE)
 
   expect_equal(formatted, input)
   expect_equal(result$output, output)
 })
 
-test_that("live_preview_knit usa Quarto para arquivos qmd", {
+test_that("report_live_preview usa Quarto para arquivos qmd", {
   project <- withr::local_tempdir()
   input <- as.character(normalize_project_path(file.path(project, "relatorio.qmd")))
   writeLines("---\ntitle: Teste\n---", input)
@@ -95,13 +95,13 @@ test_that("live_preview_knit usa Quarto para arquivos qmd", {
     }
   )
 
-  result <- live_preview_knit(input)
+  result <- report_live_preview(input)
 
   expect_equal(called, input)
   expect_equal(result$mode, "quarto")
 })
 
-test_that("live_preview_knit usa gadget para arquivos Rmd", {
+test_that("report_live_preview usa gadget para arquivos Rmd", {
   project <- withr::local_tempdir()
   input <- as.character(normalize_project_path(file.path(project, "relatorio.Rmd")))
   writeLines("---\ntitle: Teste\n---", input)
@@ -114,7 +114,7 @@ test_that("live_preview_knit usa gadget para arquivos Rmd", {
     }
   )
 
-  result <- live_preview_knit(input, style = TRUE, interval_ms = 900)
+  result <- report_live_preview(input, style = TRUE, interval_ms = 900)
 
   expect_equal(called$path, input)
   expect_true(called$style)
